@@ -1,0 +1,4 @@
+# folder<TAB>GitHub HTTPS repository URL<TAB>pinned commit SHA or tag
+# Add only verified MiniMax H3 workflow node repositories here.
+# Custom local nodes (H3 Video Controller, H3 Simple Prompt, H3 Audio Controller, H3 Connector)
+# need their exact published GitHub repository URL and release/tag before enabling.
