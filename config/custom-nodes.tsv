@@ -1,4 +1,5 @@
-# folder<TAB>GitHub HTTPS repository URL<TAB>pinned commit SHA or tag
-# Add only verified MiniMax H3 workflow node repositories here.
-# Custom local nodes (H3 Video Controller, H3 Simple Prompt, H3 Audio Controller, H3 Connector)
-# need their exact published GitHub repository URL and release/tag before enabling.
+# folder<TAB>GitHub HTTPS URL<TAB>pinned commit SHA
+H3-Video-Controller	https://github.com/AmanDolorain/H3-Video-Controller.git	01e132b11c0df35c3d204fac1d1ea21dd904d314
+H3-Simple-Prompt	https://github.com/AmanDolorain/H3-Simple-Prompt.git	e2273850988fb3aef8f86a445fa0091794e343cc
+H3-Audio-Controller	https://github.com/AmanDolorain/H3-Audio-Controller.git	0ea2c755feef485c51f4226c5f753686a362e8ee
+# H3 Connector repository is not identified; do not substitute an unrelated node.
