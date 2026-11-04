@@ -5,10 +5,28 @@
 header{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.5rem .8rem;border-bottom:1px solid GrayText}strong{margin-right:auto}
 button,a{font:inherit;color:inherit;cursor:pointer;text-decoration:none;padding:.3rem .6rem;border:1px solid GrayText;border-radius:.35rem;background:Canvas}
 iframe{width:100%;flex:1;border:0}dialog{max-width:min(94vw,850px);width:850px;border-radius:.5rem}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:58vh;overflow:auto;user-select:text}
+
+/* Compact real-time meters, styled to match Dolorain Studio's current palette. */
+.gpuMetrics{display:flex;align-items:center;gap:7px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:thin}
+.gpuName{font-weight:650;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:none;font-size:12px}
+.meter{display:flex;flex-direction:column;gap:3px;flex:0 0 100px;min-width:0;padding:5px 8px;border:1px solid #43484e;border-radius:8px;background:#1b1e21;font-size:11px}
+.meterHead{display:flex;justify-content:space-between;gap:5px;color:#e9eaec;font-variant-numeric:tabular-nums}
+.meterTrack{height:5px;border-radius:9px;background:#43484e;overflow:hidden}
+.meterFill{display:block;width:0;height:100%;border-radius:9px;background:#16a34a;transition:width .25s}
+.meter[data-level="warn"] .meterFill{background:#eab308}
+.meter[data-level="high"] .meterFill{background:#dc2626}
+.generationTools{display:flex;align-items:center;gap:9px;margin-left:auto;flex:none}
+#generate{background:#16a34a;color:white;border-color:#15803d;border-radius:999px;font-weight:650}
+#generate:hover{background:#15803d}
+#generate:disabled{opacity:.45;cursor:wait}
+#genElapsed{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12px;min-width:90px}
+@media(max-width:920px){header{flex-wrap:wrap}.gpuMetrics{order:3;width:100%;flex-basis:100%}.generationTools{margin-left:0}}
+@media(prefers-color-scheme:light){.meter{background:#fff;border-color:#c7cdd3}.meterHead{color:#24272b}.meterTrack{background:#e9ecef}}
 </style>
 <header><strong>Dolorain Studio</strong><span id="status" role="status">Connecting to engine…</span>
 <button id="example" disabled>Open H3 workflow</button><button id="theme" disabled>Light / Dark</button>
 <a href="/_studio/dashboard/" target="_blank" rel="noopener">Studio dashboard</a><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a><button id="logs">Logs · Diagnostics</button></header>
+<div class="gpuMetrics" id="gpuMetrics" aria-label="GPU and RAM monitoring"><span id="gpuName" class="gpuName" title="Detected GPU model">GPU —</span><div class="meter" id="vramMeter" title="VRAM used / total"><div class="meterHead"><span>VRAM</span><span id="gpuVram">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div><div class="meter" id="ramMeter" title="System RAM used / total"><div class="meterHead"><span>RAM</span><span id="ramValue">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div><div class="meter" id="loadMeter" title="GPU utilization"><div class="meterHead"><span>Load</span><span id="gpuLoad">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div><div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div></div><div class="generationTools"><button id="generate" disabled title="Queue the current workflow using the native ComfyUI engine">Generate</button><span id="genElapsed" title="Elapsed generation time">Time —</span></div>
 <iframe title="Native node graph" id="canvas"></iframe>
 <dialog id="panel"><h2>Logs · Diagnostics</h2><p>Current graph, Box Engine checks and recent execution events. Times in UTC.</p>
 <pre id="report">Checking…</pre><button id="refresh">Refresh</button> <button id="copy">Copy report</button> <button id="close">Close</button></dialog>
@@ -17,6 +35,66 @@ const $=id=>document.getElementById(id), frame=$('canvas'), events=[];
 let nativeApp, nativeApi;
 function log(message){events.push(new Date().toISOString()+' '+String(message).slice(0,420));if(events.length>80)events.shift()}
 function delay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+
+const gb=n=>Number.isFinite(n)?(n/1073741824).toFixed(1)+'G':'—';
+const percent=(used,total)=>Number.isFinite(used)&&Number.isFinite(total)&&total>0?100*used/total:null;
+function meter(id,label,pct){
+ const el=$(id),p=Number.isFinite(pct)?Math.max(0,Math.min(100,pct)):null;
+ el.querySelector('.meterFill').style.width=(p===null?0:p)+'%';
+ el.querySelector('.meterHead span:last-child').textContent=label;
+ el.dataset.level=p===null?'unknown':p>=90?'high':p>=75?'warn':'normal';
+}
+async function refreshTelemetry(){
+ try{
+  const response=await fetch('/_studio/telemetry',{cache:'no-store'});
+  if(!response.ok)throw Error('Telemetry HTTP '+response.status);
+  const data=await response.json(),g=data.gpu||{},ram=data.ram||{};
+  $('gpuName').textContent=g.name||'GPU unavailable';
+  meter('vramMeter',gb(g.vram_used_bytes)+' / '+gb(g.vram_total_bytes),
+   percent(g.vram_used_bytes,g.vram_total_bytes));
+  meter('ramMeter',gb(ram.used_bytes)+' / '+gb(ram.total_bytes),
+   percent(ram.used_bytes,ram.total_bytes));
+  meter('loadMeter',Number.isFinite(g.load_percent)?Math.round(g.load_percent)+'%':'—',g.load_percent);
+  // Temperature is a reading, not memory utilization. Use relative safety
+  // ranges purely for bar visualization, never call it GPU load.
+  meter('tempMeter',Number.isFinite(g.temperature_c)?Math.round(g.temperature_c)+'°C':'—',
+   Number.isFinite(g.temperature_c)?g.temperature_c:null);
+ }catch(error){
+  $('gpuName').textContent='GPU unavailable';
+  for(const id of ['vramMeter','ramMeter','loadMeter','tempMeter'])meter(id,'—',null);
+  log('Telemetry: '+error.message);
+ }
+}
+setInterval(refreshTelemetry,10000);void refreshTelemetry();
+let generationStartedAt=null,generationRunning=false;
+function elapsedLabel(ms){
+ const secs=Math.max(0,Math.floor(ms/1000));
+ return [Math.floor(secs/3600),Math.floor(secs%3600/60),secs%60].map(n=>String(n).padStart(2,'0')).join(':');
+}
+function displayElapsed(){
+ if(generationRunning&&generationStartedAt!==null)
+  $('genElapsed').textContent='Time '+elapsedLabel(Date.now()-generationStartedAt);
+}
+setInterval(displayElapsed,1000);
+function trackGeneration(name){
+ if(name==='execution_start'){
+  generationStartedAt=Date.now();generationRunning=true;displayElapsed();
+ }else if(['execution_success','execution_error','execution_interrupted'].includes(name)){
+  displayElapsed();generationRunning=false;
+ }
+}
+$('generate').onclick=async()=>{
+ if(!nativeApp?.queuePrompt)return;
+ $('generate').disabled=true;
+ try{
+  // Native ComfyUI queue method preserves the real workflow's validation
+  // and optional custom-node execution behaviour.
+  await nativeApp.queuePrompt(0);
+ }catch(error){
+  log('Generate: '+error.message);
+  $('status').textContent='Generate failed · see Logs';
+ }finally{$('generate').disabled=false}
+};
 
 // Keep original ComfyUI tabs, file handling, and nodes; protect JSON drops from
 // Edge/browser navigation even when the drop target is inside the iframe.
@@ -225,11 +303,12 @@ async function connect(){
    while(!nativeApp.graph && Date.now()-started<30000)await delay(200);
    if(!nativeApp.graph)throw Error('Native graph did not initialize');
    attachJsonDrop(win.document);enableMissingNodeAppearance();enableSearchPreview();
+   $('generate').disabled=false;
    $('example').disabled=$('theme').disabled=false;$('status').textContent='Native editor ready';
    for(const name of ['execution_start','executing','execution_cached','execution_error','execution_interrupted','execution_success','reconnecting','reconnected']){
     nativeApi.addEventListener(name,e=>{const d=e.detail||{},node=d.node_id??d.node??(typeof d==='string'?d:'');
      const detail=[node?'node '+node:'',d.node_type,d.exception_type].filter(Boolean).join(' · ');
-     log(name+' '+detail);if(name==='execution_error')$('status').textContent='Execution failed · see Logs'});
+     trackGeneration(name);log(name+' '+detail);if(name==='execution_error')$('status').textContent='Execution failed · see Logs'});
    }
   }catch(e){log(e.message);$('status').textContent='Editor integration error · see Logs'}
  };
