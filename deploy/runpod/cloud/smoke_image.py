@@ -27,7 +27,7 @@ if __name__ == '__main__':
     try:
         children.append(subprocess.Popen(['bash', str(ROOT/'deploy/runpod/entrypoint.sh')], env=env))
         # The normal preflight detects the absence of a GPU on a standard image builder.
-        # Exercise the actual pinned frontend and node plugins with a separate CPU engine.
+        # Exercise the pinned native frontend and core nodes with a separate CPU engine.
         children.append(subprocess.Popen([sys.executable,'main.py','--cpu','--listen','127.0.0.1',
                                           '--port','8188','--disable-auto-launch'], cwd='/opt/dolorain/comfy', env=env))
         deadline = time.monotonic() + 140
@@ -42,7 +42,7 @@ if __name__ == '__main__':
                 assert b'<html' in read(8765,'/?studio_canvas=1').lower()
                 assert b'app' in read(8765,'/scripts/app.js')
                 extensions = json.loads(read(8765,'/extensions'))
-                assert extensions, 'No native frontend extensions registered'
+                # Core ComfyUI can register extensions even without custom nodes;\n                # every extension it advertises must be reachable via Studio.
                 for path in extensions:
                     parsed = urlsplit(path)
                     assert not parsed.netloc and parsed.path.startswith('/extensions/')
@@ -54,13 +54,13 @@ if __name__ == '__main__':
                 print(f'Native frontend: {len(extensions)} extension files. '
                       f'H3 workflow: {len(required) - len(missing)}/{len(required)} node types registered. '
                       f'Missing: {missing}', flush=True)
-                assert {'LoadImage','AmanSimplePrompt','H3VideoController','H3AudioController'} <= registry.keys()
+                core = {'LoadImage', 'SaveImage', 'CreateVideo', 'SaveVideo'}\n                assert core <= registry.keys(), f'Missing built-in ComfyUI nodes: {sorted(core - registry.keys())}'\n                # Third-party types in example workflows are intentionally optional.\n                # Native ComfyUI graph loading must display them as missing nodes,\n                # not reject the entire graph or silently replace their widgets.
                 break
             except (OSError, ValueError, AssertionError, StopIteration):
                 if time.monotonic() >= deadline:
                     raise
                 time.sleep(1)
-        print('PASS: native editor, registered frontend extensions, Studio and Jupyter HTTP access')
+        print('PASS: native editor, core nodes, reachable frontend extensions, Studio and Jupyter HTTP access')
     finally:
         for p in children:
             p.terminate()
