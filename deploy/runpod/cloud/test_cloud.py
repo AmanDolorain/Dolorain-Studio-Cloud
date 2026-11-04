@@ -50,6 +50,15 @@ class CloudBrowserTests(unittest.IsolatedAsyncioTestCase):
         with patch.dict(os.environ, DSC_STUDIO_PASSWORD='another-long-password-12345'):
             self.assertEqual((await self.browser.get('/')).status,401)
 
+    async def test_public_test_is_explicit(self):
+        async with ClientSession() as guest:
+            url = self.browser.make_url('/')
+            with patch.dict(os.environ, DSC_PUBLIC_TEST='0'):
+                self.assertEqual((await guest.get(url)).status, 401)
+            with patch.dict(os.environ, DSC_PUBLIC_TEST='1', DSC_STUDIO_PASSWORD=''):
+                self.assertEqual((await guest.get(url)).status, 200)
+                self.assertEqual((await guest.post(url, headers={'Origin':'https://other.test'})).status, 403)
+
     async def test_diagnostics(self):
         graph={'nodes':[{'id':1}],'links':[[1,1,0,2,0,'IMAGE']]}
         r=await self.browser.post('/_studio/diagnostics',json=graph)

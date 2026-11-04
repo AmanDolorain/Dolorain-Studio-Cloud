@@ -3,7 +3,12 @@ set -Eeuo pipefail
 # No network access, package installation, model download or source update on startup.
 # Keep the established authentication boundary on public RunPod proxies.
 export JUPYTER_TOKEN="${DSC_JUPYTER_TOKEN:-${JUPYTER_PASSWORD:-${JUPYTER_TOKEN:-}}}"
-if [[ ${#JUPYTER_TOKEN} -lt 20 || -z "${DSC_STUDIO_PASSWORD:-}" || ${#DSC_STUDIO_PASSWORD} -lt 20 ]]; then
+lab_args=()
+if [[ "${DSC_PUBLIC_TEST:-0}" == 1 ]]; then
+  unset DSC_STUDIO_PASSWORD DSC_JUPYTER_TOKEN JUPYTER_TOKEN JUPYTER_PASSWORD DSC_JUPYTER_SINGLE_LOGIN
+  lab_args+=(--IdentityProvider.token= --PasswordIdentityProvider.hashed_password=)
+  echo '[TEST] Public Studio and Jupyter terminal access enabled for this Pod.'
+elif [[ ${#JUPYTER_TOKEN} -lt 20 || -z "${DSC_STUDIO_PASSWORD:-}" || ${#DSC_STUDIO_PASSWORD} -lt 20 ]]; then
   echo '[FAILED] Configure Studio password and Jupyter token (20+ characters each).'
   exit 42
 fi
@@ -35,7 +40,7 @@ studio_pid=$!
 python -m jupyterlab --ip=0.0.0.0 --port=8888 --no-browser --allow-root \
   --ServerApp.port_retries=0 --ServerApp.default_url=/lab --ServerApp.root_dir=/workspace \
   --ServerApp.allow_remote_access=True --ServerApp.trust_xheaders=True \
-  --ServerApp.terminals_enabled=True &
+  --ServerApp.terminals_enabled=True "${lab_args[@]}" &
 jupyter_pid=$!
 echo '[INFO] Studio HTTP 8765 · JupyterLab HTTP 8888 · native engine on loopback'
 wait -n "$studio_pid" "$jupyter_pid"

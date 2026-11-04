@@ -7,7 +7,9 @@ Build the current main branch before deploying the template. Use the image entry
 | 8765 | Dolorain Studio with the native node editor |
 | 8888 | JupyterLab at `/lab` |
 
-Studio uses username `studio` and `DSC_STUDIO_PASSWORD`. JupyterLab uses `DSC_JUPYTER_TOKEN` or `JUPYTER_PASSWORD`. Both secrets must be at least 20 characters. With `DSC_JUPYTER_SINGLE_LOGIN=1`, use the JupyterLab button inside the authenticated Studio session to open the lab without entering a second password. SSH is optional. Only the two HTTP service ports need to be exposed.
+For a temporary public test, set `DSC_PUBLIC_TEST=1` on the test template. Remove the Studio and Jupyter password variables. Both service URLs then grant access to anyone who has them, including terminal access on port 8888. To return to protected mode, remove this flag, configure the credentials below and redeploy.
+
+In protected mode Studio uses username `studio` and `DSC_STUDIO_PASSWORD`. JupyterLab uses `DSC_JUPYTER_TOKEN` or `JUPYTER_PASSWORD`. Both secrets must be at least 20 characters. With `DSC_JUPYTER_SINGLE_LOGIN=1`, use the JupyterLab button inside the authenticated Studio session to open the lab without entering a second password. SSH is optional. Only the two HTTP service ports need to be exposed.
 
 Use **Open H3 workflow** for the bundled example or import an existing graph in the native editor. Node plugins provide their own widgets, hooks and serialization. Missing plugins and model files must be provisioned independently. The Studio dashboard is also available for existing management features.
 
