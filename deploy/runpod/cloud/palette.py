@@ -28,7 +28,7 @@ def install(user_dir):
     palettes = dict(settings.get('Comfy.CustomColorPalettes', {}))
     for light in (False, True):
         entry = palette(light)
-        palettes.setdefault(entry['id'], entry)
+        palettes[entry['id']] = entry  # Refresh existing Dolorain palette with green accent.
     settings['Comfy.CustomColorPalettes'] = palettes
     # Use ComfyUI's own Node Search and developer-authored live preview cards.
     settings['Comfy.NodeSearchBoxImpl'] = 'default'
