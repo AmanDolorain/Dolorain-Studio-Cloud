@@ -3,6 +3,7 @@ import workflow_files
 import node_manager
 import threading
 import base64
+import re
 import hmac
 import sys
 import argparse
@@ -105,6 +106,13 @@ def build_prompt(workflow, schemas):
     # ComfyUI may have additional validation constraints; its /prompt response is authoritative.
     return prompt, errors
 
+def jupyter_proxy_url(server):
+    pod_id = os.environ.get('RUNPOD_POD_ID', '')
+    if (getattr(server, 'auth_secret', None) and os.environ.get('JUPYTER_TOKEN')
+            and os.environ.get('DSC_JUPYTER_SINGLE_LOGIN') == '1'
+            and re.fullmatch(r'[a-z0-9]+', pod_id)):
+        return f'https://{pod_id}-8888.proxy.runpod.net/lab'
+
 class Handler(BaseHTTPRequestHandler):
     def send(self, code, obj, content_type='application/json'):
         data = json.dumps(obj, ensure_ascii=False).encode() if content_type == 'application/json' else obj
@@ -154,7 +162,21 @@ class Handler(BaseHTTPRequestHandler):
         try:
             url = urlsplit(self.path)
             if url.path in ('/', '/index.html'):
-                return self.send(200, (ROOT/'index.html').read_bytes(), 'text/html; charset=utf-8')
+                page = (ROOT/'index.html').read_bytes()
+                if jupyter_proxy_url(self.server):
+                    page = page.replace(b'</h1>', b'</h1><a href="/open-jupyter" target="_blank" rel="noopener noreferrer">JupyterLab</a>', 1)
+                return self.send(200, page, 'text/html; charset=utf-8')
+            if url.path == '/open-jupyter':
+                destination = jupyter_proxy_url(self.server)
+                if not destination:
+                    return self.send(404, {'error': 'Single login unavailable'})
+                self.send_response(303)
+                self.send_header('Location', destination + '?' + urlencode({'token': os.environ['JUPYTER_TOKEN']}))
+                self.send_header('Cache-Control', 'no-store')
+                self.send_header('Referrer-Policy', 'no-referrer')
+                self.send_header('Content-Length', '0')
+                self.end_headers()
+                return
             if url.path == '/brand/d-logo.svg':
                 return self.send(200,(ROOT/'brand'/'d-logo.svg').read_bytes(),'image/svg+xml; charset=utf-8')
             if url.path in ('/manager_catalog.js', '/node_fields.js', '/canvas_size.js'):
