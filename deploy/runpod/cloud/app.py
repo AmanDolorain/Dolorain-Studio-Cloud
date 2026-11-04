@@ -58,6 +58,70 @@ async def engine_ready(client):
         return False
 
 
+def _ram_snapshot():
+    """Return container-visible RAM totals when Linux exposes them."""
+    try:
+        fields = {}
+        for line in Path('/proc/meminfo').read_text().splitlines():
+            key, _, raw = line.partition(':')
+            if key in ('MemTotal', 'MemAvailable'):
+                fields[key] = int(raw.strip().split()[0]) * 1024
+        total = fields.get('MemTotal')
+        free = fields.get('MemAvailable')
+        if total is not None and free is not None:
+            return {'used_bytes': max(0, total - free), 'total_bytes': total}
+    except (OSError, ValueError, IndexError):
+        pass
+    return {'used_bytes': None, 'total_bytes': None}
+
+
+async def telemetry(req):
+    """Read actual GPU data; missing NVML/driver returns null, never fake numbers."""
+    gpu = {'name': None, 'vram_used_bytes': None, 'vram_total_bytes': None,
+           'load_percent': None, 'temperature_c': None}
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            'nvidia-smi', '--query-gpu=name,memory.used,memory.total,utilization.gpu,temperature.gpu',
+            '--format=csv,noheader,nounits', stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL)
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.communicate()
+            raise
+        if proc.returncode == 0:
+            row = stdout.decode(errors='replace').splitlines()[0].split(',')
+            if len(row) >= 5:
+                def numeric(value):
+                    try:
+                        return float(value.strip())
+                    except ValueError:
+                        return None
+                gpu['name'] = row[0].strip() or None
+                used, total, load, temp = map(numeric, row[1:5])
+                gpu['vram_used_bytes'] = int(used * 1024 * 1024) if used is not None else None
+                gpu['vram_total_bytes'] = int(total * 1024 * 1024) if total is not None else None
+                gpu['load_percent'] = load
+                gpu['temperature_c'] = temp
+    except (OSError, IndexError, asyncio.TimeoutError):
+        pass
+    if gpu['name'] is None:
+        try:
+            async with req.app['client'].get(ENGINE + '/system_stats', timeout=2) as response:
+                if response.status == 200:
+                    device = (await response.json()).get('devices', [{}])[0]
+                    gpu['name'] = device.get('name')
+                    gpu['vram_total_bytes'] = device.get('vram_total')
+                    vram_free = device.get('vram_free')
+                    if gpu['vram_total_bytes'] is not None and vram_free is not None:
+                        gpu['vram_used_bytes'] = max(0, gpu['vram_total_bytes'] - vram_free)
+        except (OSError, ValueError, KeyError, IndexError, asyncio.TimeoutError):
+            pass
+    return web.json_response({'gpu': gpu, 'ram': _ram_snapshot()},
+                             headers={'Cache-Control': 'no-store'})
+
+
 async def diagnostics(req):
     result = {}
     if req.method == 'POST':
@@ -126,6 +190,8 @@ async def handle(req):
         return web.FileResponse(ROOT / 'H3_Workflow_Fast_FaceDetail5.json')
     if path == '/_studio/ready':
         return web.json_response({'ready': await engine_ready(req.app['client']), 'single_login': os.getenv('DSC_JUPYTER_SINGLE_LOGIN') == '1' and bool(os.getenv('RUNPOD_POD_ID'))})
+    if path == '/_studio/telemetry':
+        return await telemetry(req)
     if path == '/_studio/diagnostics':
         return await diagnostics(req)
     legacy = path.startswith('/_studio/dashboard/')
