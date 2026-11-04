@@ -90,6 +90,127 @@ function attachJsonDrop(target){
  },true);
 }
 attachJsonDrop(document);
+
+/* Node Manager: keep ComfyUI's own previews for installed definitions.
+   The optional missing-node browser uses only genuine serialized workflow data. */
+let searchPreviewObserver, searchPreviewQueued=false;
+function getMissingSnapshots(){
+ const graph=nativeApp?.graph;
+ if(!graph)return [];
+ const seen=new Set(), output=[];
+ for(const node of graph._nodes||[]){
+  if(!node.has_errors||!node.last_serialization)continue;
+  const info=node.last_serialization, type=String(info.type||node.type||'Unknown');
+  if(seen.has(type))continue;
+  seen.add(type);output.push({type,info});
+ }
+ return output.sort((a,b)=>a.type.localeCompare(b.type));
+}
+function addSearchPreview(){
+ searchPreviewQueued=false;
+ const doc=frame.contentDocument;
+ const results=doc?.querySelector('[role="search"] #results-list');
+ if(!results||results.querySelector('#dolorain-missing-list'))return;
+ const missing=getMissingSnapshots();
+ if(!missing.length)return;
+ const root=results.closest('[role="search"]');
+ if(!root)return;
+ const section=doc.createElement('section');
+ section.id='dolorain-missing-list';
+ section.className='dolorain-missing-list';
+ const heading=doc.createElement('div');
+ heading.textContent='Missing nodes · current workflow';
+ heading.className='dolorain-missing-heading';
+ section.append(heading);
+ const card=doc.createElement('aside');
+ card.className='dolorain-missing-preview';
+ card.hidden=true;
+ card.setAttribute('aria-live','polite');
+ const content=doc.createElement('div');
+ card.append(content);
+ root.append(card);
+ function render(snapshot){
+  card.hidden=false;content.replaceChildren();
+  const title=doc.createElement('div');title.className='dolorain-preview-title';
+  title.textContent=snapshot.info.title||snapshot.type;content.append(title);
+  const marker=doc.createElement('div');marker.className='dolorain-preview-status';
+  marker.textContent='Missing node · original JSON snapshot';content.append(marker);
+  const mini=doc.createElement('div');mini.className='dolorain-preview-node';
+  const top=doc.createElement('div');top.className='dolorain-preview-node-title';
+  top.textContent=snapshot.info.title||snapshot.type;mini.append(top);
+  const ins=Array.isArray(snapshot.info.inputs)?snapshot.info.inputs:[];
+  const outs=Array.isArray(snapshot.info.outputs)?snapshot.info.outputs:[];
+  const count=Math.max(ins.length,outs.length,1);
+  for(let i=0;i<Math.min(count,24);i++){
+   const line=doc.createElement('div');line.className='dolorain-preview-port-row';
+   const input=doc.createElement('span');input.textContent=ins[i]?.name||'';
+   const output=doc.createElement('span');output.textContent=outs[i]?.name||'';
+   line.append(input,output);mini.append(line);
+  }
+  const vals=Array.isArray(snapshot.info.widgets_values)?snapshot.info.widgets_values:[];
+  if(vals.length){
+   const widgets=doc.createElement('div');widgets.className='dolorain-preview-widget-summary';
+   widgets.textContent=vals.length+' saved widget value(s) · controls unavailable until installed';
+   mini.append(widgets);
+  }
+  content.append(mini);
+  const metadata=doc.createElement('div');metadata.className='dolorain-preview-meta';
+  const size=Array.isArray(snapshot.info.size)?snapshot.info.size:[];
+  metadata.textContent='Type: '+snapshot.type+(size.length===2?' · '+Math.round(size[0])+' × '+Math.round(size[1]):'');
+  content.append(metadata);
+  const notice=doc.createElement('p');
+  notice.textContent='Preview reconstructed from the saved workflow. Exact developer widgets and media players require the original package.';
+  content.append(notice);
+ }
+ for(const snapshot of missing){
+  const button=doc.createElement('button');
+  button.type='button';button.className='dolorain-missing-option';
+  button.textContent=snapshot.info.title||snapshot.type;
+  button.title='Preview missing node: '+snapshot.type;
+  button.addEventListener('pointerenter',()=>render(snapshot));
+  button.addEventListener('focus',()=>render(snapshot));
+  button.addEventListener('click',()=>render(snapshot));
+  section.append(button);
+ }
+ results.append(section);
+ // Switching to an installed result restores the native ComfyUI preview card.
+ results.addEventListener('pointerover',event=>{
+  if(event.target.closest('[data-testid="result-item"]'))card.hidden=true;
+ });
+}
+function scheduleSearchPreview(){
+ if(searchPreviewQueued)return;
+ searchPreviewQueued=true;
+ frame.contentWindow?.requestAnimationFrame(addSearchPreview);
+}
+function enableSearchPreview(){
+ const doc=frame.contentDocument;
+ if(!doc)return;
+ const style=doc.createElement('style');
+ style.id='dolorain-search-preview-style';
+ style.textContent=[
+  '.dolorain-missing-list{margin:14px 8px 8px;padding:10px;border-top:1px solid var(--border,#666);display:flex;flex-direction:column;gap:5px}',
+  '.dolorain-missing-heading{font-size:12px;font-weight:700;color:#e57373;padding:4px}',
+  '.dolorain-missing-option{background:rgba(127,29,29,.16);color:inherit;border:1px solid #9f3232;text-align:left;padding:10px;border-radius:8px;cursor:default}',
+  '.dolorain-missing-option:hover,.dolorain-missing-option:focus-visible{outline:2px solid #ef4444}',
+  '.dolorain-missing-preview{position:absolute;top:0;left:calc(100% + 14px);z-index:80;width:330px;max-height:75vh;overflow:auto;background:var(--background,#202124);color:var(--foreground,#eee);border:1px solid #a33;border-radius:12px;padding:14px;box-shadow:0 12px 30px #0005}',
+  '.dolorain-missing-preview[hidden]{display:none!important}',
+  '.dolorain-preview-title{font-weight:700;margin-bottom:5px}',
+  '.dolorain-preview-status{font-size:12px;color:#ef8888;margin-bottom:10px}',
+  '.dolorain-preview-node{border:1px solid #c44;border-radius:8px;overflow:hidden;background:rgba(120,20,20,.12)}',
+  '.dolorain-preview-node-title{background:#991b1b;color:white;padding:9px;font-weight:bold}',
+  '.dolorain-preview-port-row{display:flex;justify-content:space-between;gap:10px;padding:5px 10px;font-size:12px}',
+  '.dolorain-preview-widget-summary{border-top:1px solid #a33;padding:8px;font-size:11px}',
+  '.dolorain-preview-meta{font-size:11px;margin-top:10px;overflow-wrap:anywhere}',
+  '.dolorain-missing-preview p{font-size:11px;line-height:1.4;opacity:.8}',
+  '@media(max-width:1320px){.dolorain-missing-preview{left:auto;right:0;top:65px;max-width:85vw}}'
+ ].join('');
+ doc.head.append(style);
+ searchPreviewObserver?.disconnect();
+ searchPreviewObserver=new frame.contentWindow.MutationObserver(scheduleSearchPreview);
+ searchPreviewObserver.observe(doc.body,{subtree:true,childList:true});
+ scheduleSearchPreview();
+}
 async function connect(){
  while(true){try{const r=await fetch('/_studio/ready',{cache:'no-store'});if(r.ok){const data=await r.json();$('lab').hidden=!data.single_login;if(data.ready)break}}catch{}
  $('status').textContent='Engine starting or unavailable · see Logs';await delay(2500)}
@@ -103,7 +224,7 @@ async function connect(){
    const started=Date.now();
    while(!nativeApp.graph && Date.now()-started<30000)await delay(200);
    if(!nativeApp.graph)throw Error('Native graph did not initialize');
-   attachJsonDrop(win.document);enableMissingNodeAppearance();
+   attachJsonDrop(win.document);enableMissingNodeAppearance();enableSearchPreview();
    $('example').disabled=$('theme').disabled=false;$('status').textContent='Native editor ready';
    for(const name of ['execution_start','executing','execution_cached','execution_error','execution_interrupted','execution_success','reconnecting','reconnected']){
     nativeApi.addEventListener(name,e=>{const d=e.detail||{},node=d.node_id??d.node??(typeof d==='string'?d:'');
