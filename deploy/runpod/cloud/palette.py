@@ -33,6 +33,7 @@ def install(user_dir):
     # Use ComfyUI's own Node Search and developer-authored live preview cards.
     settings['Comfy.NodeSearchBoxImpl'] = 'default'
     settings['Comfy.NodeSearchBoxImpl.NodePreview'] = True
+    settings['Comfy.Minimap.Visible'] = False  # User explicitly excludes the bottom overview map.
     key = 'Comfy.ColorPalette'
     if settings.get(key, 'light') in ('light','dark'):
         settings[key] = 'dolorain-' + settings.get(key, 'light')
