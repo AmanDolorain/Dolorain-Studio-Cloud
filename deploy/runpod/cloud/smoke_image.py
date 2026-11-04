@@ -41,6 +41,13 @@ if __name__ == '__main__':
                 assert json.loads(read(8765,'/_studio/ready'))['ready']
                 assert b'<html' in read(8765,'/?studio_canvas=1').lower()
                 assert b'app' in read(8765,'/scripts/app.js')
+                telemetry = json.loads(read(8765, '/_studio/telemetry'))
+                assert {'gpu', 'ram'} <= telemetry.keys()
+                assert {'name', 'vram_used_bytes', 'vram_total_bytes', 'load_percent', 'temperature_c'} <= telemetry['gpu'].keys()
+                assert {'used_bytes', 'total_bytes'} <= telemetry['ram'].keys()
+                html = read(8765, '/').decode()
+                assert 'id="gpuMetrics"' in html and 'id="genElapsed"' in html
+                assert 'id="generate"' in html
                 extensions = json.loads(read(8765,'/extensions'))
                 # Core ComfyUI can register extensions even without custom nodes;
                 # every extension it advertises must be reachable via Studio.
