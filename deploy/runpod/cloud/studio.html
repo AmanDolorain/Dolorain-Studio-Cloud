@@ -196,13 +196,40 @@ function markMissingNodes(){
  missingRefreshQueued=false;
  const doc=frame.contentDocument;
  if(!doc||!nativeApp?.graph)return;
- const missing=new Set((nativeApp.graph._nodes||[])
-   .filter(n=>n.has_errors&&n.last_serialization)
-   .map(n=>String(n.id)));
+ const nodes=nativeApp.graph._nodes||[];
+ const missing=new Set(nodes.filter(n=>n.has_errors&&n.last_serialization).map(n=>String(n.id)));
+ // Classic LiteGraph nodes are canvas-drawn; DOM CSS cannot color them.
+ // Only recolor verifiably missing native placeholder nodes.
+ let changed=false;
+ for(const node of nodes){
+  if(!missing.has(String(node.id)))continue;
+  if(node.__dolorainMissingMarked)continue;
+  node.__dolorainMissingMarked=true;
+  node.color='#991b1b';
+  node.bgcolor='#451a1a';
+  changed=true;
+ }
+ if(changed)nativeApp.graph.setDirtyCanvas?.(true,true);
+ // Keep compatibility with the optional Vue node DOM renderer.
  for(const element of doc.querySelectorAll('.lg-node[data-node-id]')){
   if(missing.has(element.dataset.nodeId))element.dataset.dolorainMissing='true';
   else delete element.dataset.dolorainMissing;
  }
+}
+function frameWorkflowAtSixtyPercent(){
+ const graph=nativeApp?.graph, canvas=nativeApp?.canvas;
+ const nodes=graph?._nodes||[];
+ if(!canvas?.ds||!nodes.length)return;
+ const positions=nodes.map(n=>n.pos).filter(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+ if(!positions.length)return;
+ const x=Math.min(...positions.map(p=>p[0])), y=Math.min(...positions.map(p=>p[1]));
+ const ds=canvas.ds;
+ ds.scale=0.6;
+ if(ds.offset?.length>=2){
+  ds.offset[0]=60/0.6-x;
+  ds.offset[1]=65/0.6-y;
+ }
+ canvas.setDirty?.(true,true);
 }
 function scheduleMissingRefresh(){
  if(missingRefreshQueued)return;
