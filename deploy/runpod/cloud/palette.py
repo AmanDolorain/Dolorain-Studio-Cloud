@@ -30,7 +30,7 @@ def install(user_dir):
         entry = palette(light)
         palettes.setdefault(entry['id'], entry)
     settings['Comfy.CustomColorPalettes'] = palettes
-    key = 'Comfy.ColorPalette'
+    # Use ComfyUI's own Node Search and developer-authored live preview cards.\n    settings['Comfy.NodeSearchBoxImpl'] = 'default'\n    settings['Comfy.NodeSearchBoxImpl.NodePreview'] = True\n    key = 'Comfy.ColorPalette'
     if settings.get(key, 'light') in ('light','dark'):
         settings[key] = 'dolorain-' + settings.get(key, 'light')
     if settings != before:
