@@ -124,6 +124,8 @@ class Handler(BaseHTTPRequestHandler):
             url = urlsplit(self.path)
             if url.path in ('/', '/index.html'):
                 return self.send(200, (ROOT/'index.html').read_bytes(), 'text/html; charset=utf-8')
+            if url.path == '/brand/d-logo.svg':
+                return self.send(200,(ROOT/'brand'/'d-logo.svg').read_bytes(),'image/svg+xml; charset=utf-8')
             if url.path in ('/manager_catalog.js', '/node_fields.js', '/canvas_size.js'):
                 return self.send(200,(ROOT/url.path[1:]).read_bytes(),'application/javascript; charset=utf-8')
             if url.path == '/api/box/status':

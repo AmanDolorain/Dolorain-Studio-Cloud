@@ -1,0 +1,32 @@
+# Dolorain Studio / CUDA 13.2 compatibility-stage image. Not yet hardware-verified.
+# Own packaging and UI. CUDA, PyTorch and temporary headless inference remain third-party.
+FROM nvidia/cuda:13.2.1-cudnn-runtime-ubuntu24.04
+LABEL org.opencontainers.image.title="Dolorain Studio" org.opencontainers.image.source="https://github.com/AmanDolorain/Dolorain-Studio-Cloud"
+ARG DEBIAN_FRONTEND=noninteractive
+ARG COMFY_REF=56f179f6c50dad0c4c860ae4da427415c8e86415
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PATH="/opt/dolorain/venv/bin:/usr/local/cuda/bin:$PATH"
+ENV DSC_COMFY_DIR=/opt/dolorain/comfy DSC_REPO_DIR=/opt/dolorain/src DSC_ROOT=/workspace/dolorain
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git python3 python3-venv python3-pip ffmpeg tini openssh-server && rm -rf /var/lib/apt/lists/* && python3 -m venv /opt/dolorain/venv
+# Restrict torch to the CUDA 13.2 wheel index, not CUDA 12.x.
+RUN python -m pip install --no-cache-dir torch==2.13.0 torchvision==0.28.0 --index-url https://download.pytorch.org/whl/cu132 && python -c "import torch; assert torch.version.cuda=='13.2'"
+# Temporary headless inference adapter: pinned source. Never show its own Canvas to users.
+RUN git clone --filter=blob:none https://github.com/Comfy-Org/ComfyUI.git /opt/dolorain/comfy && git -C /opt/dolorain/comfy checkout --detach "$COMFY_REF" && test "$(git -C /opt/dolorain/comfy rev-parse HEAD)" = "$COMFY_REF"
+# Install only core requirements (remove explicitly marked optional additions).
+RUN sed '/^#non essential dependencies:/,$d' /opt/dolorain/comfy/requirements.txt > /tmp/core-requirements.txt && python -m pip install --no-cache-dir -r /tmp/core-requirements.txt && rm /tmp/core-requirements.txt && python -c "import torch; assert torch.version.cuda=='13.2'" && python -m pip check
+WORKDIR /opt/dolorain/src
+COPY . /opt/dolorain/src/
+# Only the three already verified, pinned user-owned node repositories.
+# No unknown H3 Connector, model loader, or extra pip dependencies are silently added.
+RUN git clone https://github.com/AmanDolorain/H3-Video-Controller.git /opt/dolorain/comfy/custom_nodes/H3-Video-Controller && \
+    git -C /opt/dolorain/comfy/custom_nodes/H3-Video-Controller checkout --detach 01e132b11c0df35c3d204fac1d1ea21dd904d314 && \
+    git clone https://github.com/AmanDolorain/H3-Simple-Prompt.git /opt/dolorain/comfy/custom_nodes/H3-Simple-Prompt && \
+    git -C /opt/dolorain/comfy/custom_nodes/H3-Simple-Prompt checkout --detach e2273850988fb3aef8f86a445fa0091794e343cc && \
+    git clone https://github.com/AmanDolorain/H3-Audio-Controller.git /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller && \
+    git -C /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller checkout --detach 0ea2c755feef485c51f4226c5f753686a362e8ee
+# Never expose a second UI; SSH tunnel is the sole remote access path.
+RUN mkdir -p /run/sshd && printf 'PermitRootLogin prohibit-password\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nAllowTcpForwarding local\nGatewayPorts no\nX11Forwarding no\nPermitTunnel no\n' > /etc/ssh/sshd_config.d/dolorain.conf
+
+RUN python -m unittest discover -s studio/tests -p 'test_*.py' -v
+RUN chmod +x deploy/runpod/entrypoint.sh && mkdir -p /workspace
+EXPOSE 22\nENTRYPOINT ["/usr/bin/tini","--","/bin/bash","/opt/dolorain/src/deploy/runpod/entrypoint.sh"]

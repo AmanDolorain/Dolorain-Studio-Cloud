@@ -22,5 +22,5 @@
 ## Workflow engine
 Versioned JSON workflow schema independent of frontend layout. Adapter translates to actual ComfyUI graph and validates required nodes before run. Backpressure and GPU memory policy are backend concerns, not visual graph decorations.
 
-## Status
-Design only. No frontend, schema adapter, authentication or full inference service has yet been implemented. Existing GitHub repo is still ComfyUI-based. Do not advertise this as a standalone non-ComfyUI platform until an alternative backend is implemented and tested.
+## Current status (2026-11-04)
+The Dolorain Studio frontend, Studio Adapter and independent Box Engine exist as source code. A CUDA 13.2 **candidate** RunPod Dockerfile and a monochrome D brand asset also exist. The H3 inference path still uses a headless third-party backend. A fully native H3 inference service has not been implemented or GPU-tested. See [native-engine replacement gates](OWN_ENGINE_ROADMAP.md) and [RunPod template candidate](../deploy/runpod/README.md).

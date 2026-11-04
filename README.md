@@ -47,3 +47,9 @@ The Studio adapter alone knows workflow nodes and links. The independent, model-
 No models or third-party packages are downloaded automatically. Actual RTX GPU tests, H3-specific offload/quality comparison, Windows deployment and cloud-launch integration remain outstanding.
 
 See [implementation and remaining validation](docs/box-engine-integration.md).
+
+## Own RunPod CUDA 13.2 template — candidate
+
+[Dockerfile and secure SSH deployment guide](deploy/runpod/README.md) · [black-and-white D brand asset](studio/brand/d-logo.svg).
+
+This is a **source template, not a built/published image**; do not rent a Pod expecting an image to exist yet. The frontend and Box Engine are owned, but CUDA, PyTorch and the current headless inference backend remain third-party until an independently tested H3 engine replaces them.
