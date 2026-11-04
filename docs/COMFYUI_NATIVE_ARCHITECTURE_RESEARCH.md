@@ -100,3 +100,33 @@ This section captures visible screenshots, current/project context and earlier d
 - Missing packages: red nodes + errors + preserved links; with installed packages: real video/audio/prompt widgets and previews, correct settings and behavior.
 - Check native error panel, execution failure, manager missing-node flow, sidebar templates, queue, history, console, custom-node search preview, saving and reload.
 - Do not merge failed test build; require browser and RTX 3090 checks before release.
+
+## Final native-canvas feature decisions — user acceptance 2026-11-04
+These decisions override conflicting earlier proposals in this research document. They are REQUIREMENTS, not implemented features.
+
+### KEEP: ComfyUI behavior
+- Native node graph movement/drag, sizing/resizing, grouping, typed connections, zoom, pan, multi-selection, copy/paste and undo/redo.
+- Native input/output sockets, dropdowns, editable widgets, text inputs, image/video/audio elements and developer-provided custom-node extensions. Never substitute fictional `Setting 1` fields.
+- Native Node Library with built-in and installed custom nodes, node search, add-node actions and working hover previews.
+- Native Model Library, workflow JSON drag/drop/import/save/open/tabs, queue/run/interrupt, progress indication, execution history and per-node highlighting/animating active execution and completed/error states.
+- Native error dialogs, missing-node identification, validation errors, detailed execution logs and diagnostics.
+- Real ComfyUI Manager workflows for explicit install/update/disable/find-missing; installed node pack detection must be distinct from available nodes.
+- Native extension integration opportunities: sidebar, bottom panel, topbar, commands, contextual node actions and shortcuts.
+
+### REMOVE / DO NOT SHOW
+- The bottom-right or bottom canvas minimap / graph overview map. Do not install/show it, and do not replace it with a different minimap.
+- A second HTML/SVG shadow node canvas; a second header; generic generated replacement widgets; dashboard hidden under 3 dots.
+
+### KEEP: Dolorain visual language
+- User-approved compact WHITE/GRAY Dolorain node shapes, visual proportions, title bands, text sizes, socket colors, workflow-background dots, groups, style, theme and positioning.
+- One permanent Dolorain header with D logo, correct GPU name, VRAM, RAM, GPU utilization, temperature, elapsed generation timer, dashboard/editor switches and diagnostics.
+- 60% initial display zoom. Workflow starts near left edge and extends to the right. Visible bounded/resizable workflow space; allow free native zoom and pan without losing graph content.
+- Native execution highlighting must be visible within Dolorain skin: node active/running transitions, completed state, errors in red, connection/progress feedback. The styling can change but source of state and sequencing must be real ComfyUI events.
+- For a missing custom node, preserve as much type/title/size/ports/connections and JSON-saved visual metadata as genuinely available; RED/error indicator plus actionable missing node list. Original third-party custom widget functionality cannot exist until its plugin is installed; never promise pixel-perfect preview if its implementation is absent.
+
+### Release gates
+- Demonstrate live native node-progress highlighting over consecutive execution steps.
+- Demonstrate missing nodes in RED and native errors, and no fabricated settings.
+- Demonstrate zoom at 60%, left-to-right initial placement and boundary resizing, and absence of minimap.
+- Demonstrate same header in Dashboard and Editor, same telemetry values, native manager/library/templates/logs/queue.
+- The last docker test build failed; it was removed by the user. Do NOT merge PR or publish as release until compatibility, startup, browser and GPU generation testing succeeds.
