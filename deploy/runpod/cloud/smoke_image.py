@@ -42,7 +42,8 @@ if __name__ == '__main__':
                 assert b'<html' in read(8765,'/?studio_canvas=1').lower()
                 assert b'app' in read(8765,'/scripts/app.js')
                 extensions = json.loads(read(8765,'/extensions'))
-                # Core ComfyUI can register extensions even without custom nodes;\n                # every extension it advertises must be reachable via Studio.
+                # Core ComfyUI can register extensions even without custom nodes;
+                # every extension it advertises must be reachable via Studio.
                 for path in extensions:
                     parsed = urlsplit(path)
                     assert not parsed.netloc and parsed.path.startswith('/extensions/')
@@ -54,7 +55,11 @@ if __name__ == '__main__':
                 print(f'Native frontend: {len(extensions)} extension files. '
                       f'H3 workflow: {len(required) - len(missing)}/{len(required)} node types registered. '
                       f'Missing: {missing}', flush=True)
-                core = {'LoadImage', 'SaveImage', 'CreateVideo', 'SaveVideo'}\n                assert core <= registry.keys(), f'Missing built-in ComfyUI nodes: {sorted(core - registry.keys())}'\n                # Third-party types in example workflows are intentionally optional.\n                # Native ComfyUI graph loading must display them as missing nodes,\n                # not reject the entire graph or silently replace their widgets.
+                core = {'LoadImage', 'SaveImage', 'CreateVideo', 'SaveVideo'}
+                assert core <= registry.keys(), f'Missing built-in ComfyUI nodes: {sorted(core - registry.keys())}'
+                # Third-party types in example workflows are intentionally optional.
+                # Native ComfyUI graph loading must display them as missing nodes,
+                # not reject the entire graph or silently replace their widgets.
                 break
             except (OSError, ValueError, AssertionError, StopIteration):
                 if time.monotonic() >= deadline:
