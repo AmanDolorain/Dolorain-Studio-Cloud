@@ -18,7 +18,8 @@ from aiohttp import ClientSession, ClientTimeout, DummyCookieJar, WSMsgType, web
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2] / 'studio'
 sys.path[:0] = [str(ROOT / 'backend'), str(ROOT.parent / 'pipeline')]
-ENGINE = 'http://127.0.0.1:8188'
+ENGINE = os.getenv('DSC_LOCAL_COMFY_URL', 'http://127.0.0.1:8188').rstrip('/')
+LOCAL_PREVIEW = bool(os.getenv('DSC_LOCAL_PREVIEW'))
 HOP = {'host','connection','upgrade','keep-alive','transfer-encoding','proxy-connection',
        'proxy-authorization','te','trailer','sec-websocket-key',
        'sec-websocket-version','sec-websocket-extensions','sec-websocket-protocol'}
@@ -319,12 +320,17 @@ async def services(app):
         dashboard.engine_lock = threading.RLock()
         dashboard.auth_secret = None
         threading.Thread(target=dashboard.serve_forever, daemon=True).start()
-        task = asyncio.create_task(engine())
+        if LOCAL_PREVIEW:
+            note('Local preview', 'Reusing an existing ComfyUI instance; no GPU preflight, installation or generation process started')
+            task = None
+        else:
+            task = asyncio.create_task(engine())
         try:
             yield
         finally:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+            if task is not None:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
             await asyncio.to_thread(dashboard.shutdown)
             dashboard.server_close()
 
@@ -333,4 +339,4 @@ if __name__ == '__main__':
     app = web.Application(middlewares=[access], client_max_size=4*1024*1024)
     app.cleanup_ctx.append(services)
     app.router.add_route('*','/{path:.*}',handle)
-    web.run_app(app, host='0.0.0.0', port=8765, access_log=None)
+    web.run_app(app, host='127.0.0.1' if LOCAL_PREVIEW else '0.0.0.0', port=8765, access_log=None)
