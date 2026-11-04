@@ -17,6 +17,79 @@ const $=id=>document.getElementById(id), frame=$('canvas'), events=[];
 let nativeApp, nativeApi;
 function log(message){events.push(new Date().toISOString()+' '+String(message).slice(0,420));if(events.length>80)events.shift()}
 function delay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+
+// Keep original ComfyUI tabs, file handling, and nodes; protect JSON drops from
+// Edge/browser navigation even when the drop target is inside the iframe.
+let jsonDropBusy=false, missingNodeObserver, missingRefreshQueued=false;
+function markMissingNodes(){
+ missingRefreshQueued=false;
+ const doc=frame.contentDocument;
+ if(!doc||!nativeApp?.graph)return;
+ const missing=new Set((nativeApp.graph._nodes||[])
+   .filter(n=>n.has_errors&&n.last_serialization)
+   .map(n=>String(n.id)));
+ for(const element of doc.querySelectorAll('.lg-node[data-node-id]')){
+  if(missing.has(element.dataset.nodeId))element.dataset.dolorainMissing='true';
+  else delete element.dataset.dolorainMissing;
+ }
+}
+function scheduleMissingRefresh(){
+ if(missingRefreshQueued)return;
+ missingRefreshQueued=true;
+ frame.contentWindow?.requestAnimationFrame(markMissingNodes);
+}
+function enableMissingNodeAppearance(){
+ const doc=frame.contentDocument;
+ if(!doc)return;
+ const style=doc.createElement('style');
+ style.id='dolorain-missing-node-style';
+ style.textContent='.lg-node[data-dolorain-missing="true"]{outline:2px solid #dc2626!important;outline-offset:-2px;background-color:rgba(127,29,29,.16)!important;}'
+  +'.lg-node[data-dolorain-missing="true"] [data-testid="node-header"],.lg-node[data-dolorain-missing="true"] .lg-node-header{background-color:#991b1b!important;color:#fff!important;}';
+ doc.head.append(style);
+ missingNodeObserver?.disconnect();
+ missingNodeObserver=new frame.contentWindow.MutationObserver(scheduleMissingRefresh);
+ missingNodeObserver.observe(doc.body,{subtree:true,childList:true,attributes:true,
+  attributeFilter:['data-node-id']});
+ scheduleMissingRefresh();
+}
+async function openDroppedWorkflows(files){
+ if(jsonDropBusy)return;
+ if(!nativeApp?.handleFile){
+  $('status').textContent='Editor is still loading · try the JSON drop again';
+  return;
+ }
+ jsonDropBusy=true;
+ try{
+  for(const file of files){
+   $('status').textContent='Opening '+file.name+' in Studio…';
+   // Genuine native ComfyUI import creates a new tab and restores its graph.
+   const result=await nativeApp.handleFile(file,'file_drop');
+   if(result===false)throw Error('ComfyUI rejected '+file.name);
+   scheduleMissingRefresh();
+  }
+  $('status').textContent='Workflow opened in Studio';
+ }catch(error){
+  log('Workflow drop: '+error.message);
+  $('status').textContent='Unable to open JSON · see Logs';
+ }finally{jsonDropBusy=false;}
+}
+function attachJsonDrop(target){
+ target.addEventListener('dragover',event=>{
+  if(event.dataTransfer?.types?.includes('Files')){
+   event.preventDefault();
+   event.dataTransfer.dropEffect='copy';
+  }
+ },true);
+ target.addEventListener('drop',event=>{
+  const files=Array.from(event.dataTransfer?.files||[]).filter(
+   file=>/\.json$/i.test(file.name));
+  if(!files.length)return; // Leave other files to the native ComfyUI handlers.
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void openDroppedWorkflows(files);
+ },true);
+}
+attachJsonDrop(document);
 async function connect(){
  while(true){try{const r=await fetch('/_studio/ready',{cache:'no-store'});if(r.ok){const data=await r.json();$('lab').hidden=!data.single_login;if(data.ready)break}}catch{}
  $('status').textContent='Engine starting or unavailable · see Logs';await delay(2500)}
@@ -30,6 +103,7 @@ async function connect(){
    const started=Date.now();
    while(!nativeApp.graph && Date.now()-started<30000)await delay(200);
    if(!nativeApp.graph)throw Error('Native graph did not initialize');
+   attachJsonDrop(win.document);enableMissingNodeAppearance();
    $('example').disabled=$('theme').disabled=false;$('status').textContent='Native editor ready';
    for(const name of ['execution_start','executing','execution_cached','execution_error','execution_interrupted','execution_success','reconnecting','reconnected']){
     nativeApi.addEventListener(name,e=>{const d=e.detail||{},node=d.node_id??d.node??(typeof d==='string'?d:'');
@@ -40,8 +114,9 @@ async function connect(){
  };
  frame.src='/?studio_canvas=1';
 }
-$('example').onclick=async()=>{try{if(!confirm('Open the H3 example? Save any current changes first.'))return;
- const r=await fetch('/_studio/workflow');if(!r.ok)throw Error('H3 workflow unavailable');await nativeApp.loadGraphData(await r.json());
+$('example').onclick=async()=>{try{
+ const r=await fetch('/_studio/workflow');if(!r.ok)throw Error('H3 workflow unavailable');
+ await nativeApp.loadGraphData(await r.json(),true,true,'H3 Example');scheduleMissingRefresh();
 }catch(e){log(e.message);$('status').textContent=e.message}};
 $('theme').onclick=async()=>{try{const settings=nativeApp.ui.settings;
  const next=['light','dolorain-light'].includes(settings.getSettingValue('Comfy.ColorPalette'))?'dark':'light';
