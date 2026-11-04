@@ -106,6 +106,19 @@ header #boxToggle{width:36px!important;min-width:36px!important;height:34px!impo
 header #boxToggle svg.engineMark{display:block;width:25px!important;height:25px!important;fill:currentColor!important;stroke:none!important}
 header #boxToggle:hover,header #boxToggle[aria-expanded="true"]{color:#16a34a!important;background:transparent!important}
 header #boxToggle:focus-visible{outline:2px solid #16a34a!important;outline-offset:1px!important}
+
+/* Approved final header glyph sizes: only SVG artwork, never button boxes. */
+header #studioBtn svg.pickedIcon,
+header #graphBtn svg.pickedIcon,
+header #theme svg{
+  width:20px!important;height:20px!important;
+  max-width:20px!important;max-height:20px!important;
+}
+header #boxToggle svg.engineMark,
+header #logsButton svg.pickedIcon{
+  width:18px!important;height:18px!important;
+  max-width:18px!important;max-height:18px!important;
+}
 </style>
 <style>
 /* v1.5: workflow-bound canvas, compact icon toolbar */
