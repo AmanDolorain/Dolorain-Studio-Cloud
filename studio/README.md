@@ -31,3 +31,9 @@ The active tab name supports double-click rename. The workflow chooser opened wi
 ## Scope and verification
 
 This repository contains Studio frontend and local bridge **source**, not a portable installer. Windows testing, GPU H3 generation, provider startup wiring and standalone non-ComfyUI inference are not verified by this source-only update. Do not expose the bridge to the public internet without a separate access-controlled deployment.
+
+## Box Engine drawer (experimental)
+
+The bottom **Box Engine** button opens a read-only panel. `Analyze connections` sends only the current workflow JSON to the local `POST /api/box/inspect` route, which uses the repository's `BoundedFlow` CPU queue to inspect links without changing the graph. `Refresh GPU plan` calls `GET /api/box/status` to *observe* the existing GPU policy; no flags are applied. This requires the `pipeline/` folder alongside `studio/` as in this repository checkout. A standalone Windows folder without `pipeline/` continues to work but the Box Engine panel reports unavailable until integration is deployed.
+
+Hugging Face connection intelligence is *not* installed or active. `DSC_BOX_CONNECTION_MODEL` can hold a model ID for later setup, but setting it does not download or execute a model. There are no extra Python package dependencies.

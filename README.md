@@ -39,3 +39,9 @@ Those existing files are preserved for compatibility and have **not** been switc
 - Workflow rename/open/delete and fullscreen UI behavior have browser-based test evidence from the staged editor.
 - Windows target-machine installation, full H3 GPU video generation, and cross-provider launch integration are **not yet verified**.
 - No model weights, passwords, user workflows, generated videos, wheel bundles or large vendor dependencies are committed.
+
+## Box Engine (experimental Studio connection)
+
+The bottom **Box Engine** drawer is wired to the existing `pipeline/bounded_flow.py` CPU pipeline and `pipeline/gpu_policy.py` GPU **planning** policy through `pipeline/box_engine.py` and Studio bridge endpoints. It can inspect workflow connections and report VRAM planning status. It **does not** alter generation scheduling, run H3 tensor chunking, or auto-download Hugging Face models.
+
+See [Box Engine integration status](docs/box-engine-integration.md). The previously discussed Hugging Face connection model is **not identified/connected** yet.

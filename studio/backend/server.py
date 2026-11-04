@@ -2,6 +2,7 @@
 import workflow_files
 import node_manager
 import threading
+import sys
 import argparse
 import json
 import mimetypes
@@ -14,6 +15,17 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit, urlencode, parse_qs
 
 ROOT = Path(__file__).resolve().parent.parent
+# Source checkout: reuse the experimental pipeline. A standalone Windows
+# package without the optional pipeline still starts normally.
+PIPELINE = ROOT.parent / 'pipeline'
+if PIPELINE.is_dir():
+    sys.path.insert(0, str(PIPELINE))
+try:
+    import box_engine
+except ModuleNotFoundError as exc:
+    if exc.name not in ('box_engine', 'bounded_flow', 'gpu_policy'):
+        raise
+    box_engine = None
 MAX_JSON = 5 * 1024 * 1024
 
 def request_comfy(base, path, method='GET', body=None, content_type='application/json'):
@@ -40,7 +52,7 @@ def build_prompt(workflow, schemas):
             continue  # muted/bypassed: refuse links to them below
         spec = schemas.get(n['type'])
         if not spec:
-            errors.append(f"Node #{n['id']}: type {n['type']} not installed in ComfyUI")
+            errors.append(f"Node #{n['id']}: type {n['type']} not installed in the engine")
             continue
         schema = spec.get('input', {})
         declared = {**schema.get('required', {}), **schema.get('optional', {})}
@@ -112,6 +124,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, (ROOT/'index.html').read_bytes(), 'text/html; charset=utf-8')
             if url.path in ('/manager_catalog.js', '/node_fields.js', '/canvas_size.js'):
                 return self.send(200,(ROOT/url.path[1:]).read_bytes(),'application/javascript; charset=utf-8')
+            if url.path == '/api/box/status':
+                if box_engine is None:
+                    return self.send(503, {'error':'Box Engine pipeline not installed in this deployment.'})
+                return self.send(200, box_engine.status())
             if url.path == '/api/workflows':
                 return self.send(200,{'files':workflow_files.list_files(self.server.comfy, request_comfy)})
             if url.path == '/api/workflow':
@@ -184,10 +200,14 @@ class Handler(BaseHTTPRequestHandler):
                     if job.get('reloaded'):
                         return self.send(200, {'ready':True})
                     if not hasattr(self.server,'reload_engine'):
-                        return self.send(200, {'ready':False,'message':'Restart your ComfyUI engine, then click Refresh.'})
+                        return self.send(200, {'ready':False,'message':'Restart your GPU engine, then click Refresh.'})
                     result=self.server.reload_engine()
                     job['reloaded']=result['ready']
                     return self.send(200,result)
+            if self.path == '/api/box/inspect':
+                if box_engine is None:
+                    return self.send(503, {'error':'Box Engine pipeline not installed in this deployment.'})
+                return self.send(200, box_engine.inspect_workflow(self.body()))
             if self.path == '/api/queue':
                 workflow = self.body()
                 schemas_raw, _ = request_comfy(self.server.comfy, '/object_info')
@@ -205,7 +225,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send(404, {'error':'Not found'})
         except (HTTPError, URLError) as exc:
             details = exc.read().decode(errors='replace') if isinstance(exc, HTTPError) else str(exc)
-            self.send(502, {'error':'ComfyUI request failed','details':details[:4000]})
+            self.send(502, {'error':'GPU engine request failed','details':details[:4000]})
         except Exception as exc:
             self.send(400, {'error':str(exc)})
 

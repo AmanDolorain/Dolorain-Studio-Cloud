@@ -1,6 +1,6 @@
 # Dolorain Adaptive Flow Pipeline (DAFP)
 
-Status: **design/prototype only; not integrated with MiniMax H3 or ComfyUI**.
+Status: **CPU diagnostic prototype wired to Dolorain Studio's Box Engine drawer**. GPU scheduling and MiniMax H3 execution **remain unintegrated**.
 
 ## Intent
 Two cooperating layers:

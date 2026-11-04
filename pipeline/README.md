@@ -1,7 +1,12 @@
 # Experimental adaptive flow
 
-This is a **CPU-only proof of concept** for bounded producer/consumer flow. It does not install as a ComfyUI node, access CUDA, or alter MiniMax H3 generation.
+The original `bounded_flow.py` remains a **CPU-only bounded producer/consumer proof of concept**; `gpu_policy.py` remains a **launch-flag recommendation**, not GPU scheduling or tensor chunking.
 
-See [architecture](../docs/adaptive-flow-architecture.md).
+The new `box_engine.py` makes both components visible to Dolorain Studio via the local backend bridge:
+- `GET /api/box/status` reads the current GPU probe and suggested launch policy, without applying it.
+- `POST /api/box/inspect` analyzes the Studio workflow's node IDs and connection records using the bounded CPU queue, returning counts and structural warnings. It does not submit a GPU prompt.
+- The Studio bottom **Box Engine** drawer is opt-in, collapsed by default.
 
-Do not use the prototype for production or untrusted inputs. Its first revision assumes consumers do not raise exceptions. GPU-aware scheduling and ComfyUI integration will require separate testing.
+No H3-specific offload, temporal chunking, model recommendation, AI inference, or ComfyUI GPU data-path changes are implemented. Do not turn planning output into live GPU flags without hardware tests.
+
+See [Box Engine integration status](../docs/box-engine-integration.md) and [adaptive architecture](../docs/adaptive-flow-architecture.md).
