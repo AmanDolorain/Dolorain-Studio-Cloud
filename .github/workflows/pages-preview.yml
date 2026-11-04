@@ -1,0 +1,39 @@
+name: Dolorain Studio - existing source Pages preview
+on:
+  push:
+    branches:
+      - fix/native-node-behavior-20261104
+    paths:
+      - studio/**
+      - .github/workflows/pages-preview.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: dolorain-pages
+  cancel-in-progress: true
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy actual Studio source (not a separate demo)
+        run: |
+          mkdir -p _site
+          cp -a studio/. _site/
+          test -s _site/index.html
+          test -s _site/node_fields.js
+          test -s _site/canvas_size.js
+          test -s _site/manager_catalog.js
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
