@@ -59,7 +59,19 @@ async def engine_ready(client):
 
 
 def _ram_snapshot():
-    """Return container-visible RAM totals when Linux exposes them."""
+    """Prefer the real Pod/container cgroup quota; identify fallback as host RAM."""
+    try:
+        limit_file = Path('/sys/fs/cgroup/memory.max')
+        current_file = Path('/sys/fs/cgroup/memory.current')
+        if limit_file.exists() and current_file.exists():
+            limit_raw = limit_file.read_text().strip()
+            if limit_raw != 'max':
+                limit = int(limit_raw)
+                used = int(current_file.read_text().strip())
+                if limit > 0 and 0 <= used <= limit:
+                    return {'used_bytes': used, 'total_bytes': limit, 'scope': 'container'}
+    except (OSError, ValueError):
+        pass
     try:
         fields = {}
         for line in Path('/proc/meminfo').read_text().splitlines():
@@ -69,11 +81,10 @@ def _ram_snapshot():
         total = fields.get('MemTotal')
         free = fields.get('MemAvailable')
         if total is not None and free is not None:
-            return {'used_bytes': max(0, total - free), 'total_bytes': total}
+            return {'used_bytes': max(0, total - free), 'total_bytes': total, 'scope': 'host'}
     except (OSError, ValueError, IndexError):
         pass
-    return {'used_bytes': None, 'total_bytes': None}
-
+    return {'used_bytes': None, 'total_bytes': None, 'scope': 'unknown'}
 
 async def telemetry(req):
     """Read actual GPU data; missing NVML/driver returns null, never fake numbers."""
@@ -289,9 +300,13 @@ async def engine():
         args = [sys.executable, 'main.py', '--listen', '127.0.0.1', '--port', '8188','--disable-auto-launch']
         for flag, directory in [('models','models'),('input','input'),('output','output'),('user','user')]:
             args.extend(['--' + flag + '-directory', str(workspace / directory)])
-        await run_child('ComfyUI', args, cwd='/opt/dolorain/comfy')
-    except OSError as e:
-        note('Startup', f'FAIL: {e}')
+        note('ComfyUI', 'Launching native backend on 127.0.0.1:8188')
+        status = await run_child('ComfyUI', args, cwd='/opt/dolorain/comfy')
+        note('ComfyUI', f'Backend terminated with exit status {status}')
+    except Exception as e:
+        import traceback
+        note('Startup', f'FAIL: {type(e).__name__}: {e}')
+        print(traceback.format_exc(), flush=True)
 
 
 async def services(app):
