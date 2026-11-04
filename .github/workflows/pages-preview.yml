@@ -32,8 +32,14 @@ jobs:
           test -s _site/manager_catalog.js
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
+      # A re-run keeps prior attempt artifacts in the same workflow run.
+      # A unique name per attempt prevents deploy-pages from finding two
+      # artifacts called "github-pages" after Re-run failed jobs.
       - uses: actions/upload-pages-artifact@v3
         with:
+          name: pages-${{ github.run_id }}-${{ github.run_attempt }}
           path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: pages-${{ github.run_id }}-${{ github.run_attempt }}
