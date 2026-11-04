@@ -29,4 +29,5 @@ RUN mkdir -p /run/sshd && printf 'PermitRootLogin prohibit-password\nPasswordAut
 
 RUN python -m unittest discover -s studio/tests -p 'test_*.py' -v
 RUN chmod +x deploy/runpod/entrypoint.sh && mkdir -p /workspace
-EXPOSE 22\nENTRYPOINT ["/usr/bin/tini","--","/bin/bash","/opt/dolorain/src/deploy/runpod/entrypoint.sh"]
+EXPOSE 22
+ENTRYPOINT ["/usr/bin/tini","--","/bin/bash","/opt/dolorain/src/deploy/runpod/entrypoint.sh"]

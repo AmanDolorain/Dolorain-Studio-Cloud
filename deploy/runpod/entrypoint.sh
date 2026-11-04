@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 # No network access, package installation, model download or source update on startup.
 # Require the operator's existing SSH public key; refuse unprotected deployment.
-if [[ -z "$PUBLIC_KEY" || ! "$PUBLIC_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256)[[:space:]] ]]; then
+if [[ -z "${PUBLIC_KEY:-}" || ! "$PUBLIC_KEY" =~ ^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256)[[:space:]] ]]; then
   echo "[FAILED] Set PUBLIC_KEY to your SSH public key. No unauthenticated Studio port will open."
   exit 41
 fi
@@ -21,7 +21,8 @@ fi
 mkdir -p /workspace/dolorain/models /workspace/dolorain/input /workspace/dolorain/output /workspace/dolorain/user
 finish() {
   trap - EXIT INT TERM
-  [[ -z "$ssh_pid" ]] || kill "$ssh_pid" 2>/dev/null || true\n  [[ -z "$studio_pid" ]] || kill "$studio_pid" 2>/dev/null || true
+  [[ -z "$ssh_pid" ]] || kill "$ssh_pid" 2>/dev/null || true
+  [[ -z "$studio_pid" ]] || kill "$studio_pid" 2>/dev/null || true
   [[ -z "$engine_pid" ]] || kill "$engine_pid" 2>/dev/null || true
 }
 engine_pid=""; studio_pid=""; ssh_pid=""
