@@ -28,10 +28,51 @@ header>#status{font-size:11px;max-width:116px;white-space:nowrap;overflow:hidden
 header>button,header>a{font-size:11px;white-space:nowrap;padding:4px 6px;flex:none}
 @media(max-width:1150px){.meterTrack{width:14px}.gpuMetrics{gap:5px}.gpuName{max-width:116px}header>#status{max-width:75px}}
 @media(max-width:850px){header{overflow-x:auto;scrollbar-width:thin}.gpuMetrics{flex:0 0 auto}.gpuName{max-width:135px}}
+
+/* Screenshot-matched flat toolbar: logo, label, telemetry, and 3 native actions. */
+.studioHeader{height:69px;min-height:69px;background:#f7f8fa;color:#192029;border-bottom:1px solid #c6cbd0;gap:20px;padding:0 11px;overflow:visible}
+.studioBrand{display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none}
+.studioBrand img{width:38px;height:38px;display:block}
+.studioBrand strong{font-size:19px;font-weight:750;margin:0}
+.studioSubtitle{color:#596575;font-size:12px;font-weight:600;margin-left:-3px}
+.studioHeader .gpuMetrics{gap:18px;align-items:center;overflow:hidden}
+.studioHeader .gpuName{font-size:13px;font-weight:500;color:#192029;max-width:210px;flex:0 1 auto}
+.studioHeader .meter{font-size:12px;color:#606a78;gap:4px}
+.studioHeader .meterHead span:last-child{font-weight:400}
+.studioHeader .meterTrack{width:22px;height:3px;opacity:.85}
+.studioHeaderActions{display:flex;align-items:center;gap:16px;margin-left:auto;flex:none}
+.studioHeader .headerIcon{border:0!important;border-radius:5px;background:transparent!important;display:inline-flex;align-items:center;justify-content:center;color:#20252b;padding:4px!important;width:34px;height:36px}
+.studioHeader .headerIcon:hover{background:#e3e7ea!important}
+.studioHeader #generate{box-shadow:none;opacity:1}
+.studioHeader #generate:disabled{opacity:.45}
+.studioHeader .generationTools{gap:3px;align-items:center}
+.studioHeader #genElapsed{font-size:11px;color:#606a78;min-width:45px}
+.studioHeader #status{flex:0 1 auto;color:#68737f;max-width:105px}
+.studioTools{position:relative}
+.studioTools>summary{list-style:none;cursor:pointer;padding:3px 6px;font-size:23px;line-height:1}
+.studioTools>summary::-webkit-details-marker{display:none}
+.studioToolsMenu{position:absolute;right:0;top:34px;display:flex;flex-direction:column;gap:4px;min-width:175px;padding:9px;border:1px solid #c6cbd0;border-radius:8px;background:#f7f8fa;box-shadow:0 8px 24px #0002;z-index:50}
+.studioToolsMenu>*{text-align:left;background:transparent;border:0;color:#192029;white-space:nowrap;font-size:12px;padding:7px 8px}
+.studioToolsMenu>[hidden]{display:none}
+@media(max-width:1100px){.studioHeader{gap:10px}.studioHeader .gpuMetrics{gap:7px}.studioHeaderActions{gap:6px}.studioHeader .meterTrack{width:12px}}
+@media(max-width:860px){.studioHeader{overflow-x:auto;scrollbar-width:thin}.studioHeader .gpuMetrics{flex:0 0 auto}.studioHeader #status{display:none}}
 </style>
-<header><strong>Dolorain Studio <span class="studioSubtitle">Workflow Editor</span></strong><div class="gpuMetrics" id="gpuMetrics" aria-label="GPU and RAM monitoring"><span id="gpuName" class="gpuName" title="Detected GPU model">GPU —</span><div class="meter" id="vramMeter" title="VRAM used / total"><div class="meterHead"><span>VRAM</span><span id="gpuVram">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div><div class="meter" id="ramMeter" title="System RAM used / total"><div class="meterHead"><span>RAM</span><span id="ramValue">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div><div class="meter" id="loadMeter" title="GPU utilization"><div class="meterHead"><span>Load</span><span id="gpuLoad">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div><div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div></div><span id="status" role="status">Connecting to engine…</span>
-<button id="example" disabled>Open H3 workflow</button><button id="theme" disabled>Light / Dark</button>
-<a href="/_studio/dashboard/" target="_blank" rel="noopener">Studio dashboard</a><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a><button id="logs">Logs · Diagnostics</button><div class="generationTools"><button id="generate" disabled title="Queue the current workflow using the native ComfyUI engine">Generate</button><span id="genElapsed" title="Elapsed generation time">Time —</span></div>
+<header class="studioHeader">
+<div class="studioBrand"><img src="/_studio/brand/d-logo.svg" alt="D" width="38" height="38"><strong>Dolorain Studio</strong><span class="studioSubtitle">Workflow Editor</span></div>
+<div class="gpuMetrics" id="gpuMetrics" aria-label="GPU and RAM monitoring">
+ <span id="gpuName" class="gpuName" title="Detected GPU model">GPU —</span>
+ <div class="meter" id="vramMeter" title="VRAM used / total"><div class="meterHead"><span>VRAM</span><span id="gpuVram">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+ <div class="meter" id="ramMeter" title="RAM used / total"><div class="meterHead"><span>RAM</span><span id="ramValue">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+ <div class="meter" id="loadMeter" title="GPU load"><div class="meterHead"><span>Load</span><span id="gpuLoad">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+ <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+</div>
+<span id="status" role="status" title="ComfyUI connection">Connecting…</span>
+<div class="studioHeaderActions">
+ <div class="generationTools"><button id="generate" class="headerIcon" disabled title="Generate with native ComfyUI" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
+ <button id="logs" class="headerIcon" title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
+ <button id="theme" class="headerIcon" disabled title="Light / Dark" aria-label="Toggle light and dark"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M20.1 15.8A8.8 8.8 0 0 1 8.2 3.9 9 9 0 1 0 20.1 15.8Z"/></svg></button>
+ <details class="studioTools"><summary title="More Studio tools" aria-label="More Studio tools">⋯</summary><div class="studioToolsMenu"><button id="example" disabled>Open H3 workflow</button><a href="/_studio/dashboard/" target="_blank" rel="noopener">Studio dashboard</a><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a></div></details>
+</div>
 </header>
 <iframe title="Native node graph" id="canvas"></iframe>
 <dialog id="panel"><h2>Logs · Diagnostics</h2><p>Current graph, Box Engine checks and recent execution events. Times in UTC.</p>
