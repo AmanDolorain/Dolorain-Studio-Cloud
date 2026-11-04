@@ -16,14 +16,21 @@ RUN git clone --filter=blob:none https://github.com/Comfy-Org/ComfyUI.git /opt/d
 RUN python -m pip install --no-cache-dir -r /opt/dolorain/comfy/requirements.txt && python -c "import torch, pydantic, pydantic_settings; assert torch.version.cuda=='13.2'" && python -m pip check
 WORKDIR /opt/dolorain/src
 COPY . /opt/dolorain/src/
-# Only the three already verified, pinned user-owned node repositories.
-# No unknown H3 Connector, model loader, or extra pip dependencies are silently added.
+# Preserve original developer widgets: install the node packages used by the shipped graph.
+# Third-party Pixaroma is pinned to the exact commit recorded by the H3 workflow.
+# No unknown H3 Connector or model dependencies are silently added.
 RUN git clone https://github.com/AmanDolorain/H3-Video-Controller.git /opt/dolorain/comfy/custom_nodes/H3-Video-Controller && \
     git -C /opt/dolorain/comfy/custom_nodes/H3-Video-Controller checkout --detach 01e132b11c0df35c3d204fac1d1ea21dd904d314 && \
     git clone https://github.com/AmanDolorain/H3-Simple-Prompt.git /opt/dolorain/comfy/custom_nodes/H3-Simple-Prompt && \
     git -C /opt/dolorain/comfy/custom_nodes/H3-Simple-Prompt checkout --detach e2273850988fb3aef8f86a445fa0091794e343cc && \
     git clone https://github.com/AmanDolorain/H3-Audio-Controller.git /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller && \
     git -C /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller checkout --detach 0ea2c755feef485c51f4226c5f753686a362e8ee
+# PixaromaLoadVideo and its playable widget come from the real Pixaroma extension,
+# not a replacement HTML input. Keep all developer frontend assets registered.
+RUN git clone --filter=blob:none https://github.com/pixaroma/ComfyUI-Pixaroma.git /opt/dolorain/comfy/custom_nodes/ComfyUI-Pixaroma && \
+    git -C /opt/dolorain/comfy/custom_nodes/ComfyUI-Pixaroma checkout --detach 99202b56db46b3a9194f9449464fa76e5af9c1cb && \
+    test "$(git -C /opt/dolorain/comfy/custom_nodes/ComfyUI-Pixaroma rev-parse HEAD)" = "99202b56db46b3a9194f9449464fa76e5af9c1cb" && \
+    python -m pip install --no-cache-dir -r /opt/dolorain/comfy/custom_nodes/ComfyUI-Pixaroma/requirements.txt && python -m pip check
 # Optional SSH uses public keys.
 RUN mkdir -p /run/sshd && printf 'PermitRootLogin prohibit-password\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nAllowTcpForwarding local\nGatewayPorts no\nX11Forwarding no\nPermitTunnel no\n' > /etc/ssh/sshd_config.d/dolorain.conf
 
