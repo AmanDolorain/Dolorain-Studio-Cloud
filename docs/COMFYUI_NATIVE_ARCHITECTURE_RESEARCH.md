@@ -76,3 +76,27 @@ G. No main merge and no candidate tag overwrite until A-F pass. Build/push to se
 5. Add full native E2E browser suite plus smoke checks; user reviews UI in GPU test; only then merge.
 
 **This document records research/architecture only. No claim of completed implementation or tested build.**
+
+## Approved Dolorain visual and behavior contract (2026-11-04)
+This section captures visible screenshots, current/project context and earlier design decisions available in the conversation. It does not claim exhaustive access to all earlier chat transcripts.
+### Canvas layout and camera
+- Keep the accepted white Dolorain node skin: readable compact nodes, light grey headers, ports, wiring, subtle dotted background and dashed workflow/group boundaries. Do not substitute the stock ComfyUI aesthetic.
+- At first opening/import, frame the leftmost workflow content at the left and follow its layout toward the right, rather than auto-centering the graph arbitrarily.
+- Default initial zoom exactly 60%, with visible plus/minus and percentage readout. Save and restore per-workflow viewport when available; never recenter while the user is editing.
+- Keep a visible workflow-bounded rectangular space based on native graph node/group positions; allow boundary resizing/expansion up/down/left/right while allowing normal native zoom/pan without clipping or modifying connections.
+- Preserve native node and group size/position and metadata; boundary is a presentation overlay, not a second graph or executable graph replacement.
+### Unified user interface
+- One permanent Dolorain header for BOTH dashboard and editor; switch only lower workspace. Keep D logo, GPU/VRAM/RAM/Load/Temp, elapsed time, original studio/editor icons, diagnostics and theme; do not hide dashboard in three dots.
+- Separate detected GPU, CUDA preflight, ComfyUI backend, Box engine transport, generation status. Use container-cgroup RAM or explicitly identify host RAM.
+- Keep native ComfyUI sidebar (templates/models/nodes/workflows), native workflow tabs, queue/history/settings/shortcuts, validation errors and console/logs reachable and visibly distinguishable.
+### Node style vs native behavior
+- Change appearance only: every installed node retains original developer-defined widgets, prompt input, audio/video player and uploader, image previews, sockets, dropdowns, conversion, resizing, connections, name edits and serialization.
+- Missing custom nodes must preserve original JSON identities, links, dimensions/ports and be visibly RED with an actionable native missing/error indication. Do not render fictional functional fields named Setting 1, Setting 2, etc.
+- Maintain a distinct node manager including search, original previews, explicit install/update/disable and missing-node resolution; never auto-install packages.
+- For classic canvas-rendered nodes, pure CSS cannot recolor the drawings. Evaluate native palettes, LiteGraph style constants and supported extension hooks against the PINNED frontend version. Do not replace canvas rendering with homemade HTML nodes.
+### Required E2E acceptance
+- H3 and SparkVSR JSON import into native tabs, zoom begins at 60%, first node visible left, bounded workflow frame extends right and can be resized without modifying graph.
+- Verify unified header and GPU readings on dashboard and editor, no menu-hidden dashboard, no empty canvas if engine healthy; diagnose startup failures separately.
+- Missing packages: red nodes + errors + preserved links; with installed packages: real video/audio/prompt widgets and previews, correct settings and behavior.
+- Check native error panel, execution failure, manager missing-node flow, sidebar templates, queue, history, console, custom-node search preview, saving and reload.
+- Do not merge failed test build; require browser and RTX 3090 checks before release.
