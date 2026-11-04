@@ -17,10 +17,10 @@ Our long-term engine must replace the temporary inference backend *only* after M
 - Base: `nvidia/cuda:13.2.1-cudnn-runtime-ubuntu24.04` (published NVIDIA image).
 - PyTorch: `torch==2.13.0`, `torchvision==0.28.0`, CUDA 13.2 wheels (Python 3.12 x86_64).
 - Temporary ComfyUI checkout: `56f179f6c50dad0c4c860ae4da427415c8e86415`.
-- Three user-owned H3 controller repositories pinned in `config/custom-nodes.tsv`. **H3 Connector and full H3 model-loader compatibility are not yet proven**.
+- The core RunPod image installs **no third-party custom nodes** by default. The sample H3 workflow can contain missing node types, which must remain visible as the native ComfyUI red missing-node placeholders. Install desired custom nodes separately to restore their original widgets, preview players and execution behavior. **H3 Connector and full H3 model-loader compatibility are not yet proven**.
 - Host driver policy: require NVIDIA Linux driver **595.45.04 or newer**, deliberately strict relative to CUDA minor-version compatibility. At cheaper GPUs, check the **host driver before renting**.
 
-The Dockerfile deliberately installs only ComfyUI's core requirements and three known, pinned user-owned node repositories. This is a compatibility-stage **minimum candidate**, not a complete audited dependency lock: transitive Python versions and Docker base digest still need a full successful image build, license review, pinning and SBOM before production.
+The Dockerfile deliberately installs only ComfyUI's core runtime requirements; optional custom node repositories are not baked into the image. This is a compatibility-stage **minimum candidate**, not a complete audited dependency lock: transitive Python versions and Docker base digest still need a full successful image build, license review, pinning and SBOM before production.
 
 ## One-click manual GitHub image build
 
