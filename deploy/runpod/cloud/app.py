@@ -186,6 +186,8 @@ async def handle(req):
             raise web.HTTPNotFound(text='Single login is not enabled for this Pod.')
         raise web.HTTPFound(destination + '?' + urlencode({'token':os.environ['JUPYTER_TOKEN']}),
                             headers={'Cache-Control':'no-store', 'Referrer-Policy':'no-referrer'})
+    if path == '/_studio/brand/d-logo.svg':
+        return web.FileResponse(ROOT / 'brand' / 'd-logo.svg', headers={'Cache-Control':'public, max-age=3600'})
     if path == '/_studio/workflow':
         return web.FileResponse(ROOT / 'H3_Workflow_Fast_FaceDetail5.json')
     if path == '/_studio/ready':
