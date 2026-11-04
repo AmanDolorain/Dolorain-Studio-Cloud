@@ -1,0 +1,67 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dolorain Studio</title>
+<style>
+:root{color-scheme:light dark;font:14px system-ui}*{box-sizing:border-box}body{margin:0;height:100dvh;display:flex;flex-direction:column;background:Canvas;color:CanvasText}
+header{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.5rem .8rem;border-bottom:1px solid GrayText}strong{margin-right:auto}
+button,a{font:inherit;color:inherit;cursor:pointer;text-decoration:none;padding:.3rem .6rem;border:1px solid GrayText;border-radius:.35rem;background:Canvas}
+iframe{width:100%;flex:1;border:0}dialog{max-width:min(94vw,850px);width:850px;border-radius:.5rem}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:58vh;overflow:auto;user-select:text}
+</style>
+<header><strong>Dolorain Studio</strong><span id="status" role="status">Connecting to engine…</span>
+<button id="example" disabled>Open H3 workflow</button><button id="theme" disabled>Light / Dark</button>
+<a href="/_studio/dashboard/" target="_blank" rel="noopener">Studio dashboard</a><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a><button id="logs">Logs · Diagnostics</button></header>
+<iframe title="Native node graph" id="canvas"></iframe>
+<dialog id="panel"><h2>Logs · Diagnostics</h2><p>Current graph, Box Engine checks and recent execution events. Times in UTC.</p>
+<pre id="report">Checking…</pre><button id="refresh">Refresh</button> <button id="copy">Copy report</button> <button id="close">Close</button></dialog>
+<script type="module">
+const $=id=>document.getElementById(id), frame=$('canvas'), events=[];
+let nativeApp, nativeApi;
+function log(message){events.push(new Date().toISOString()+' '+String(message).slice(0,420));if(events.length>80)events.shift()}
+function delay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+async function connect(){
+ while(true){try{const r=await fetch('/_studio/ready',{cache:'no-store'});if(r.ok){const data=await r.json();$('lab').hidden=!data.single_login;if(data.ready)break}}catch{}
+ $('status').textContent='Engine starting or unavailable · see Logs';await delay(2500)}
+ frame.onload=async()=>{
+  try{
+   const win=frame.contentWindow;
+   // Import in the child realm so all custom nodes share the same app and event bus.
+   const load=win.Function('path','return import(path)');
+   nativeApp=(await load('/scripts/app.js')).app;
+   nativeApi=(await load('/scripts/api.js')).api;
+   const started=Date.now();
+   while(!nativeApp.graph && Date.now()-started<30000)await delay(200);
+   if(!nativeApp.graph)throw Error('Native graph did not initialize');
+   $('example').disabled=$('theme').disabled=false;$('status').textContent='Native editor ready';
+   for(const name of ['execution_start','executing','execution_cached','execution_error','execution_interrupted','execution_success','reconnecting','reconnected']){
+    nativeApi.addEventListener(name,e=>{const d=e.detail||{},node=d.node_id??d.node??(typeof d==='string'?d:'');
+     const detail=[node?'node '+node:'',d.node_type,d.exception_type].filter(Boolean).join(' · ');
+     log(name+' '+detail);if(name==='execution_error')$('status').textContent='Execution failed · see Logs'});
+   }
+  }catch(e){log(e.message);$('status').textContent='Editor integration error · see Logs'}
+ };
+ frame.src='/?studio_canvas=1';
+}
+$('example').onclick=async()=>{try{if(!confirm('Open the H3 example? Save any current changes first.'))return;
+ const r=await fetch('/_studio/workflow');if(!r.ok)throw Error('H3 workflow unavailable');await nativeApp.loadGraphData(await r.json());
+}catch(e){log(e.message);$('status').textContent=e.message}};
+$('theme').onclick=async()=>{try{const settings=nativeApp.ui.settings;
+ const next=settings.getSettingValue('Comfy.ColorPalette')==='light'?'dark':'light';
+ await settings.setSettingValue('Comfy.ColorPalette',next);document.documentElement.style.colorScheme=next;
+}catch(e){log(e.message)}};
+let reportId=0;
+async function refresh(){
+ const id=++reportId;let lines=[],graph;
+ try{if(nativeApp?.graph){
+  const doc=nativeApp.graph.serialize(),nodes=doc.nodes.map(n=>({id:n.id,type:n.type}));
+  const links=doc.links.map(l=>Array.isArray(l)?l.slice(0,6):[l.id,l.origin_id,l.origin_slot,l.target_id,l.target_slot,l.type]);
+  graph={nodes,links};
+ }}catch(e){lines.push('Studio adapter: could not read active graph: '+e.message)}
+ try{const r=await fetch('/_studio/diagnostics',graph?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(graph)}:{cache:'no-store'});
+ if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();lines.push(...Object.entries(d.layers).map(([k,v])=>k+': '+v),'','Recent server events',...d.events);
+ }catch(e){lines.push('Diagnostics endpoint unavailable: '+e.message)}
+ lines.push('','Browser execution events',...events);if(id===reportId)$('report').textContent=lines.join('\n');
+}
+$('logs').onclick=()=>{$('panel').showModal();refresh()};$('refresh').onclick=refresh;$('close').onclick=()=>$('panel').close();
+$('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('report').textContent);$('copy').textContent='Copied'}
+ catch{const range=document.createRange();range.selectNodeContents($('report'));getSelection().removeAllRanges();getSelection().addRange(range);$('copy').textContent='Press Ctrl+C'}};
+connect();
+</script></html>

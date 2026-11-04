@@ -10,9 +10,9 @@ ENV DSC_COMFY_DIR=/opt/dolorain/comfy DSC_REPO_DIR=/opt/dolorain/src DSC_ROOT=/w
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git python3 python3-venv python3-pip ffmpeg tini openssh-server && rm -rf /var/lib/apt/lists/* && python3 -m venv /opt/dolorain/venv
 # Restrict torch to the CUDA 13.2 wheel index, not CUDA 12.x.
 RUN python -m pip install --no-cache-dir torch==2.13.0 torchvision==0.28.0 --index-url https://download.pytorch.org/whl/cu132 && python -c "import torch; assert torch.version.cuda=='13.2'"
-# Temporary headless inference adapter: pinned source. Never show its own Canvas to users.
+# Pinned inference engine and native node frontend, hosted through Studio.
 RUN git clone --filter=blob:none https://github.com/Comfy-Org/ComfyUI.git /opt/dolorain/comfy && git -C /opt/dolorain/comfy checkout --detach "$COMFY_REF" && test "$(git -C /opt/dolorain/comfy rev-parse HEAD)" = "$COMFY_REF"
-# Install only core requirements (remove explicitly marked optional additions).
+# Install the pinned checkout's requirements.
 RUN python -m pip install --no-cache-dir -r /opt/dolorain/comfy/requirements.txt && python -c "import torch, pydantic, pydantic_settings; assert torch.version.cuda=='13.2'" && python -m pip check
 WORKDIR /opt/dolorain/src
 COPY . /opt/dolorain/src/
@@ -24,13 +24,15 @@ RUN git clone https://github.com/AmanDolorain/H3-Video-Controller.git /opt/dolor
     git -C /opt/dolorain/comfy/custom_nodes/H3-Simple-Prompt checkout --detach e2273850988fb3aef8f86a445fa0091794e343cc && \
     git clone https://github.com/AmanDolorain/H3-Audio-Controller.git /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller && \
     git -C /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller checkout --detach 0ea2c755feef485c51f4226c5f753686a362e8ee
-# Never expose a second UI; SSH tunnel is the sole remote access path.
+# Optional SSH uses public keys.
 RUN mkdir -p /run/sshd && printf 'PermitRootLogin prohibit-password\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nAllowTcpForwarding local\nGatewayPorts no\nX11Forwarding no\nPermitTunnel no\n' > /etc/ssh/sshd_config.d/dolorain.conf
 
 # JupyterLab Terminal for operator diagnostics (no extensions or auto-update).
 RUN python -m pip install --no-cache-dir jupyterlab==4.4.10 && python -m pip check
 RUN python -m unittest discover -s studio/tests -p 'test_*.py' -v
 RUN chmod +x deploy/runpod/entrypoint.sh && mkdir -p /workspace
+RUN python -m unittest discover -s deploy/runpod/cloud -v
+RUN --mount=type=tmpfs,target=/workspace --mount=type=tmpfs,target=/root/.local python deploy/runpod/cloud/smoke_image.py
 # Studio HTTP is exposed through the RunPod HTTPS proxy; SSH remains optional.
 EXPOSE 8765 8888 22
-ENTRYPOINT ["/usr/bin/tini","--","/bin/bash","/opt/dolorain/src/deploy/runpod/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini","-s","--","/bin/bash","/opt/dolorain/src/deploy/runpod/entrypoint.sh"]

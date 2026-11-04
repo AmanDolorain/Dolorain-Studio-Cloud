@@ -7,7 +7,7 @@ Branding: black-and-white **D** at [studio/brand/d-logo.svg](../../studio/brand/
 ## Product layers
 
 1. **Owned**: Dolorain Studio interface, Studio Adapter, Independent Box Engine, deployment scripts and branding.
-2. **Temporary third-party runtime**: NVIDIA CUDA, PyTorch and a pinned headless ComfyUI inference compatibility engine. The original ComfyUI Canvas is not publicly exposed.
+2. **Temporary third-party runtime**: NVIDIA CUDA, PyTorch and a pinned headless ComfyUI inference compatibility engine. Studio hosts the native editor and installed developer extensions through its browser endpoint.
 3. **Persistent user data**: H3 weight files and license-verified assets, inputs, outputs and workflows under `/workspace/dolorain/`. None are bundled into the image.
 
 Our long-term engine must replace the temporary inference backend *only* after MiniMax H3 loaders, text/audio/video VAEs, diffusion/sampling, GPU memory, video output and workflow equivalence tests pass. The inference backend is not our original code; own packaging is not the same as owning every component.
@@ -47,22 +47,9 @@ docker push ghcr.io/amandolorain/dolorain-studio:cuda13.2-test
 
 The registry package must be made visible to RunPod, or authenticated pull must be configured. No image is assumed to exist at those tags.
 
-## RunPod custom template draft
+## RunPod template
 
-- Name: **Dolorain Studio — CUDA 13.2**
-- Container Image: the **actual published** registry URL from the successful build, not a guessed URL.
-- GPU: A40 48GB first; RTX 3090 24GB, RTX 4090 24GB and A30 24GB are hardware candidates, not yet tested.
-- Expose **22/tcp for SSH only**. Do **not** expose 8188 or 8765 publicly.
-- Env: `PUBLIC_KEY` = your SSH **public** key (not private key, not password).
-- Use provider-backed **persistent volume mounted at /workspace**, with size chosen from existing model inventory; 120–150 GB may be insufficient if adding multiple large model variants.
-- Startup: Dockerfile's `ENTRYPOINT` (no extra `setup.sh`, no bootstrap downloader, no duplicate engine).
-- Open via authenticated SSH local forwarding, using actual RunPod SSH host and mapped port:
-
-```bash
-ssh -N -L 8765:127.0.0.1:8765 -p YOUR_SSH_PORT root@YOUR_POD_HOST
-```
-
-Then browse to `http://127.0.0.1:8765`. UI is Dolorain Studio. Backend is private loopback `127.0.0.1:8188`. Container must be launched with GPU passthrough.
+The browser services are Dolorain Studio on HTTP 8765 and JupyterLab on HTTP 8888. The engine stays on loopback. See [current access settings and diagnostics](WEB-ACCESS.md). Use the image entrypoint and mount the persistent volume at `/workspace`.
 
 ## Safe test sequence
 
@@ -79,4 +66,4 @@ Then browse to `http://127.0.0.1:8765`. UI is Dolorain Studio. Backend is privat
 
 No A40/3090/A30/4090 CUDA 13.2 device test was performed. The image was not built or published. The H3 Connector is not installed because its source is not verified. Model weights are not downloaded. CUDA 13.2 compatibility for H3/SageAttention is not established. Template configuration in RunPod's account has **not** been created.
 
-No new installs or model downloads occur on every Pod startup; package installation occurs **once per Docker image build**. Persistent GPU data stays outside the image. Public exposure requires a separately reviewed authenticated gateway (not included).
+No new installs or model downloads occur on every Pod startup; package installation occurs **once per Docker image build**. Persistent GPU data stays outside the image.

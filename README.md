@@ -48,12 +48,8 @@ No models or third-party packages are downloaded automatically. Actual RTX GPU t
 
 See [implementation and remaining validation](docs/box-engine-integration.md).
 
-## Own RunPod CUDA 13.2 template — candidate
+## RunPod CUDA 13.2 template
 
-[Dockerfile and secure SSH deployment guide](deploy/runpod/README.md) · [black-and-white D brand asset](studio/brand/d-logo.svg).
+Open HTTP 8765 for Dolorain Studio and HTTP 8888 for JupyterLab. Keep the existing template credentials. Studio can open JupyterLab using the optional single-login setting. Studio hosts the native node editor and its developer extensions. **Logs · Diagnostics** provides a copyable execution and layer report. The existing dashboard is accessible from the Studio header.
 
-This is a **source template, not a built/published image**; do not rent a Pod expecting an image to exist yet. The frontend and Box Engine are owned, but CUDA, PyTorch and the current headless inference backend remain third-party until an independently tested H3 engine replaces them.
-
-## RunPod click-to-open and developer terminal (candidate)
-
-The next RunPod Docker image candidate adds HTTPS-proxied **Dolorain Studio (HTTP 8765)** and **JupyterLab Terminal (HTTP 8888)** with distinct credentials, and optional SSH (TCP 22). The existing headless engine (8188) remains private. **Rebuild and verify the new image first; existing running Pods are not updated automatically.** See [RunPod access guide](deploy/runpod/WEB-ACCESS.md).
+Build the image from this revision before deploying a fresh Pod. The image build includes a CPU boot check for both browser services. Live hardware and H3 generation require a separate test. See the [RunPod access guide](deploy/runpod/WEB-ACCESS.md).
