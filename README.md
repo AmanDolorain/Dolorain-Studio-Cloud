@@ -40,10 +40,10 @@ Those existing files are preserved for compatibility and have **not** been switc
 - Windows target-machine installation, full H3 GPU video generation, and cross-provider launch integration are **not yet verified**.
 - No model weights, passwords, user workflows, generated videos, wheel bundles or large vendor dependencies are committed.
 
-## Independent Box Engine (transport foundation)
+## Independent Box Engine (opt-in extensions)
 
-The bottom Studio Box Engine panel is connected through `studio/backend/box_adapter.py` to a generic bounded transport in `pipeline/box_engine.py`. The transport has **no model, node or workflow knowledge**. Only Studio's adapter parses workflows. The CPU transport enforces bounded item and byte credits, backpressure, and release after consumer acknowledgement.
+The Studio adapter alone knows workflow nodes and links. The independent, model-agnostic Box Engine handles opaque payloads with bounded CPU credits. **Fair route scheduling**, **temporary disk spill**, and **PyTorch CUDA tensor transfer with event synchronization** are available as explicit opt-in APIs in `pipeline/`. They are not wired into H3 generation; inference remains unchanged.
 
-**Not a GPU data-path replacement:** GPU offloading, H3 execution scheduling, disk spill, and remote production deployment remain unimplemented. The existing generation path is unchanged. No extra model or dependency download is required.
+No models or third-party packages are downloaded automatically. Actual RTX GPU tests, H3-specific offload/quality comparison, Windows deployment and cloud-launch integration remain outstanding.
 
-See [independent Box Engine architecture](docs/box-engine-integration.md).
+See [implementation and remaining validation](docs/box-engine-integration.md).

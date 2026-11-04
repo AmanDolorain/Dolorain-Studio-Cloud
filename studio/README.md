@@ -39,3 +39,9 @@ The bottom Box Engine panel is a read-only view of the **independent transport**
 `pipeline/box_engine.py` knows no model names, node types or workflow format. Its data-transfer API works on opaque packets with explicit sizes and acknowledgement-based release. Real GPU execution is **not** yet routed through it. No AI model, pip package, or weight file is downloaded automatically.
 
 The source checkout expects `pipeline/` next to `studio/`. Older standalone Windows distributions need their own incremental deployment of these source changes; GitHub edits do not update an existing local install.
+
+## Optional Box Engine extensions (source only)
+
+The shared repository's `pipeline/box_engine.py` exposes bounded CPU transfer plus opt-in fair scheduling, temporary disk spill and CUDA tensor copying. Studio's `box_adapter.py` is the only part that knows workflow structure. The bottom Studio panel remains **read-only** and does not activate these extensions for running H3 jobs. See [integration details](../docs/box-engine-integration.md).
+
+To run local integration tests without installing dependencies: `python -m unittest discover -s studio/tests -p 'test_*.py' -v`. Real GPU data verification requires `python pipeline/gpu_smoke.py` on an approved CUDA instance with existing PyTorch.

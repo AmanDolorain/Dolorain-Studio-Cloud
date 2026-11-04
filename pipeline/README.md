@@ -1,12 +1,16 @@
-# Independent Box Engine
+# Independent Box Engine (opt-in extensions)
 
-The transport layer is model- and workflow-agnostic:
-- `box_engine.py` accepts `Packet(payload, size_bytes, route)` envelopes and a consumer callback.
-- `bounded_flow.py` applies item/byte budgets, backpressure and consumer acknowledgement. The opaque contents are never interpreted.
-- `gpu_policy.py` is a separate **planning** utility; it does not control the Box Engine.
+Transport stays model-agnostic; workflow parsing remains solely in Studio's adapter.
 
-**Only** `studio/backend/box_adapter.py` knows Studio workflow nodes and links. It translates node/link metadata into opaque route identifiers; no model identity or node-type details enter the Box Engine. The Studio drawer and bridge provide read-only diagnostics and planning.
+| Component | Purpose | Activation |
+|---|---|---|
+| \`bounded_flow.py\` | Bounded in-flight CPU queue and backpressure | \`BoxEngine.transfer()\` |
+| \`box_engine.py\` | Opaque Packet façade and optional integrations | Explicit method invocation |
+| \`fair_scheduler.py\` | Priority / route fairness with bounded credits | \`transfer_scheduled()\` |
+| \`disk_spill.py\` | Temporary raw bytes spill, quota, free-space reserve, cleanup | \`transfer_spilled(..., directory=..., max_disk_bytes=...)\` |
+| \`gpu_transfer.py\` | CUDA/PyTorch tensor copies and event completion | \`transfer_gpu(..., destination=...)\` |
+| \`gpu_smoke.py\` | Manual small reversible GPU copy test | \`python pipeline/gpu_smoke.py\` |
 
-No external runtime dependencies or models are installed. H3 generation, GPU scheduling and provider scripts are unchanged. The CPU transport is functional, but the GPU data path is **not integrated**.
+**Important:** These utilities are wired to the Box Engine facade, but are **not activated automatically** for H3 or any generation workflow. The Studio bottom drawer still provides diagnostic read-only APIs. No model data or node types reach the transport. A compatible PyTorch already installed in the environment is required only when explicitly invoking the CUDA adapter.
 
-Details: [Box Engine status](../docs/box-engine-integration.md).
+For details, risks and missing hardware tests see [Box Engine integration](../docs/box-engine-integration.md).
