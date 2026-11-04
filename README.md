@@ -53,3 +53,7 @@ See [implementation and remaining validation](docs/box-engine-integration.md).
 [Dockerfile and secure SSH deployment guide](deploy/runpod/README.md) · [black-and-white D brand asset](studio/brand/d-logo.svg).
 
 This is a **source template, not a built/published image**; do not rent a Pod expecting an image to exist yet. The frontend and Box Engine are owned, but CUDA, PyTorch and the current headless inference backend remain third-party until an independently tested H3 engine replaces them.
+
+## RunPod click-to-open and developer terminal (candidate)
+
+The next RunPod Docker image candidate adds HTTPS-proxied **Dolorain Studio (HTTP 8765)** and **JupyterLab Terminal (HTTP 8888)** with distinct credentials, and optional SSH (TCP 22). The existing headless engine (8188) remains private. **Rebuild and verify the new image first; existing running Pods are not updated automatically.** See [RunPod access guide](deploy/runpod/WEB-ACCESS.md).

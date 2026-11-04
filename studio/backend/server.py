@@ -2,6 +2,8 @@
 import workflow_files
 import node_manager
 import threading
+import base64
+import hmac
 import sys
 import argparse
 import json
@@ -119,7 +121,36 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError('Request too large')
         return json.loads(self.rfile.read(length))
 
+    def require_access(self, write=False):
+        """Require browser credentials on the RunPod HTTP proxy.
+
+        Only enabled when server.auth_secret is set. The proxy must provide HTTPS.
+        ComfyUI remains on loopback. Never log or echo the password.
+        """
+        secret = getattr(self.server, 'auth_secret', None)
+        if secret is None:
+            return True
+        supplied = self.headers.get('Authorization', '')
+        if not hmac.compare_digest(supplied.encode('utf-8'), secret):
+            self.send_response(401)
+            self.send_header('WWW-Authenticate', 'Basic realm="Dolorain Studio", charset="UTF-8"')
+            self.send_header('Content-Length', '0')
+            self.send_header('Cache-Control', 'no-store')
+            self.end_headers()
+            return False
+        if write:
+            host = self.headers.get('Host', '')
+            origin = self.headers.get('Origin', '')
+            # Browser POST must originate from this exact HTTPS RunPod proxy host.
+            if (not host or origin != 'https://' + host
+                    or self.headers.get_content_type() != 'application/json'):
+                self.send(403, {'error': 'HTTPS same-origin JSON requests only'})
+                return False
+        return True
+
     def do_GET(self):
+        if not self.require_access():
+            return
         try:
             url = urlsplit(self.path)
             if url.path in ('/', '/index.html'):
@@ -176,13 +207,22 @@ class Handler(BaseHTTPRequestHandler):
             self.send(502, {'error': str(exc)})
 
     def do_POST(self):
+        if not self.require_access(write=True):
+            return
         try:
             if self.path in ('/api/install-pack','/api/reload-nodes','/api/workflow/save','/api/workflow/delete'):
                 host = self.headers.get('Host','')
                 origin = self.headers.get('Origin','')
-                if (urlsplit('//' + host).hostname not in ('127.0.0.1','localhost','::1')
-                        or origin != 'http://' + host or self.headers.get_content_type() != 'application/json'):
-                    return self.send(403, {'error':'Open Studio on localhost to install node packs.'})
+                remote_auth = getattr(self.server, 'auth_secret', None) is not None
+                local_only_operation = self.path in ('/api/install-pack', '/api/reload-nodes')
+                if (self.headers.get_content_type() != 'application/json'
+                        or (local_only_operation and (remote_auth
+                             or urlsplit('//' + host).hostname not in ('127.0.0.1','localhost','::1')
+                             or origin != 'http://' + host))
+                        or (not remote_auth and
+                            (urlsplit('//' + host).hostname not in ('127.0.0.1','localhost','::1')
+                             or origin != 'http://' + host))):
+                    return self.send(403, {'error':'Operation not permitted from this connection.'})
                 data = self.body()
                 with self.server.engine_lock:
                     if self.path.startswith('/api/workflow/'):
@@ -241,7 +281,12 @@ if __name__ == '__main__':
     args=parser.parse_args()
     if not (args.comfy.startswith('http://127.0.0.1:') or args.comfy.startswith('http://localhost:')):
         parser.error('ComfyUI URL must be loopback for this local-only bridge')
+    password = os.environ.get('DSC_STUDIO_PASSWORD', '')
+    if args.host not in ('127.0.0.1', 'localhost', '::1') and len(password) < 20:
+        parser.error('Public Studio listener requires DSC_STUDIO_PASSWORD (20+ characters)')
     server=ThreadingHTTPServer((args.host,args.port),Handler)
+    server.auth_secret = ('Basic ' + base64.b64encode(
+        ('studio:' + password).encode('utf-8')).decode('ascii')).encode('ascii') if password else None
     server.engine_lock=threading.RLock()
     server.comfy=args.comfy
     print(f'Dolorain Studio: http://{args.host}:{args.port}  ->  {args.comfy}',flush=True)

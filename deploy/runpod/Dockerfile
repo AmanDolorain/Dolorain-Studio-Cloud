@@ -27,7 +27,10 @@ RUN git clone https://github.com/AmanDolorain/H3-Video-Controller.git /opt/dolor
 # Never expose a second UI; SSH tunnel is the sole remote access path.
 RUN mkdir -p /run/sshd && printf 'PermitRootLogin prohibit-password\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nAllowTcpForwarding local\nGatewayPorts no\nX11Forwarding no\nPermitTunnel no\n' > /etc/ssh/sshd_config.d/dolorain.conf
 
+# JupyterLab Terminal for operator diagnostics (no extensions or auto-update).
+RUN python -m pip install --no-cache-dir jupyterlab==4.4.10 && python -m pip check
 RUN python -m unittest discover -s studio/tests -p 'test_*.py' -v
 RUN chmod +x deploy/runpod/entrypoint.sh && mkdir -p /workspace
-EXPOSE 22
+# Studio HTTP is exposed through the RunPod HTTPS proxy; SSH remains optional.
+EXPOSE 8765 8888 22
 ENTRYPOINT ["/usr/bin/tini","--","/bin/bash","/opt/dolorain/src/deploy/runpod/entrypoint.sh"]
