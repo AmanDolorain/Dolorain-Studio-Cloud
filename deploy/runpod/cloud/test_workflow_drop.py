@@ -16,6 +16,23 @@ class NativeWorkflowDropContract(unittest.TestCase):
         self.assertIn("event.preventDefault()", STUDIO)
         self.assertIn("event.stopImmediatePropagation()", STUDIO)
 
+
+    def test_one_header_with_dashboard_and_native_editor(self):
+        self.assertIn('id="dashboardSwitch"', STUDIO)
+        self.assertIn('id="editorSwitch"', STUDIO)
+        self.assertIn('id="dashboardCanvas"', STUDIO)
+        self.assertIn('id="canvas"', STUDIO)
+        self.assertIn('function switchView(view)', STUDIO)
+        self.assertIn("style.textContent='body>header", STUDIO)
+        self.assertNotIn('>Studio dashboard</a>', STUDIO)
+
+    def test_approved_theme_and_native_workflow_camera(self):
+        self.assertIn('body.dark', STUDIO)
+        self.assertIn('#18a957', STUDIO)
+        self.assertIn('ds.scale=0.6', STUDIO)
+        self.assertIn('frameWorkflowAtSixtyPercent()', STUDIO)
+        self.assertIn("node.color='#991b1b'", STUDIO)
+
     def test_native_import_keeps_workflow_tabs_and_missing_nodes(self):
         self.assertIn("nativeApp.handleFile(file,'file_drop')", STUDIO)
         self.assertIn("enableMissingNodeAppearance()", STUDIO)
