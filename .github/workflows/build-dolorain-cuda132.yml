@@ -27,4 +27,4 @@ jobs:
           context: .
           file: deploy/runpod/Dockerfile
           push: true
-          tags: ghcr.io/amandolorain/dolorain-studio:cuda13.2-candidate
+          tags: ghcr.io/amandolorain/dolorain-studio:cuda13.2-node-ui-test
