@@ -13,7 +13,7 @@ RUN python -m pip install --no-cache-dir torch==2.13.0 torchvision==0.28.0 --ind
 # Temporary headless inference adapter: pinned source. Never show its own Canvas to users.
 RUN git clone --filter=blob:none https://github.com/Comfy-Org/ComfyUI.git /opt/dolorain/comfy && git -C /opt/dolorain/comfy checkout --detach "$COMFY_REF" && test "$(git -C /opt/dolorain/comfy rev-parse HEAD)" = "$COMFY_REF"
 # Install only core requirements (remove explicitly marked optional additions).
-RUN sed '/^#non essential dependencies:/,$d' /opt/dolorain/comfy/requirements.txt > /tmp/core-requirements.txt && python -m pip install --no-cache-dir -r /tmp/core-requirements.txt && rm /tmp/core-requirements.txt && python -c "import torch; assert torch.version.cuda=='13.2'" && python -m pip check
+RUN python -m pip install --no-cache-dir -r /opt/dolorain/comfy/requirements.txt && python -c "import torch, pydantic, pydantic_settings; assert torch.version.cuda=='13.2'" && python -m pip check
 WORKDIR /opt/dolorain/src
 COPY . /opt/dolorain/src/
 # Only the three already verified, pinned user-owned node repositories.
