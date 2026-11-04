@@ -1,35 +1,41 @@
 # Dolorain Studio Cloud
 
-Shared ComfyUI bootstrap for **Vast.ai** and **RunPod**.
+**Dolorain Studio** is the primary workflow editor interface. This repository contains the Studio editor source under [`studio/`](studio/) and the existing Vast.ai / RunPod GPU setup scripts.
 
-**Status: foundation only, not yet GPU-tested.** MiniMax H3 custom nodes, model downloads, authentication and port mapping are not configured yet.
+## Studio workflow editor
 
-## Files
-- `setup.sh` — shared ComfyUI setup; keeps existing Git checkout and creates model directories.
-- `launch-vast.sh` — Vast.ai wrapper.
-- `launch-runpod.sh` — RunPod wrapper.
-- `config/comfyui.env.example` — optional configuration example without secrets.
+- Studio View and editable Node Graph View use the same workflow.
+- Includes the H3 example graph, canvas controls, workflow tabs, fullscreen and keyboard shortcuts.
+- Workflow names can be renamed from the open tab or workflow chooser; the chooser includes Open (play) and Delete (trash) controls.
+- See [Studio source and instructions](studio/README.md).
 
-## Minimal on-start bootstrap (either provider)
+**Important:** The visible ComfyUI canvas is not required. For now, inference still relies on an existing compatible **headless ComfyUI backend**, which supports custom nodes and GPU execution. A fully ComfyUI-free inference engine has **not** been built or verified.
 
-Paste in the provider's **startup script** field, **not Docker Options**, only after checking your Docker image includes bash, curl, git, Python 3, and compatible CUDA/PyTorch:
+## Reuse existing installations before downloading
+
+Use the already installed compatible ComfyUI backend, Python packages, custom nodes, and model weights where available. The Studio source does not bundle models, a virtual environment, or the third-party ComfyUI distribution.
+
+For a live local API connection, start an existing ComfyUI instance first and launch the bridge with the correct *local loopback* port, for example:
 
 ```bash
-#!/usr/bin/env bash
-set -e
-curl -fsSL https://raw.githubusercontent.com/AmanDolorain/Dolorain-Studio-Cloud/main/setup.sh -o /tmp/dsc-setup.sh
-bash /tmp/dsc-setup.sh
+python studio/backend/server.py --comfy http://127.0.0.1:8188
 ```
 
-This installs ComfyUI foundations but **does not automatically start ComfyUI**, expose ports, or enable authentication. The selected image's existing startup service may handle those tasks.
+Run the above from the repository root, with a compatible Python installation. Then open `http://127.0.0.1:8765`. The bridge itself uses Python's standard library. For cloud machines, use SSH port forwarding or another appropriate access-controlled tunnel. Do not expose the loopback-only bridge publicly.
 
-## H3 model directories
-- `models/diffusion_models/` — diffusion
-- `models/text_encoders/` — text encoder
-- `models/vae/` — video/audio VAE
-- `models/loras/` — Turbo LoRA
+**Avoid accidental installs:** `studio/start-local.bat` is the Windows full-distribution launcher, **not** the reuse-only launcher. Its `install()` routine can create a virtual environment and install requirements when the bundled engine is offline. It requires the separate full Windows distribution with `engine/` and wheels. Do not run it from the source-only checkout expecting a working inference engine. Existing cloud `setup.sh` also performs dependency installation by default; inspect its flags before running.
 
-No model weights are downloaded or committed. Existing model files are preserved. Do not commit passwords, API tokens or model weights. Public access to ComfyUI requires appropriate access controls.
+## Existing Vast.ai / RunPod setup (legacy backend)
 
-## Next
-Confirm exact RunPod and Vast.ai Docker images, then implement and test H3 node installation, model retrieval, startup, and secure port access.
+- `setup.sh` — shared ComfyUI foundation; reuses an existing Git checkout (but may still install Python requirements).
+- `launch-vast.sh` and `launch-runpod.sh` — provider wrappers.
+- `config/`, `scripts/`, `pipeline/` — prior GPU setup and experiments.
+
+Those existing files are preserved for compatibility and have **not** been switched automatically to the new Studio UI. The new frontend-to-cloud integration still requires target-GPU validation.
+
+## Status
+
+- Studio editor source committed and backend's five Python unit tests pass in the staging environment.
+- Workflow rename/open/delete and fullscreen UI behavior have browser-based test evidence from the staged editor.
+- Windows target-machine installation, full H3 GPU video generation, and cross-provider launch integration are **not yet verified**.
+- No model weights, passwords, user workflows, generated videos, wheel bundles or large vendor dependencies are committed.
