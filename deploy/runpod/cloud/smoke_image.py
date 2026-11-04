@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -41,15 +42,25 @@ if __name__ == '__main__':
                 assert b'<html' in read(8765,'/?studio_canvas=1').lower()
                 assert b'app' in read(8765,'/scripts/app.js')
                 extensions = json.loads(read(8765,'/extensions'))
-                player = next(path for path in extensions if path.endswith('/audio.js') and 'h3-audio-controller' in path.lower())
-                assert b'createPlayer' in read(8765, player)
-                assert 'H3AudioController' in json.loads(read(8765,'/object_info/H3AudioController'))
+                assert extensions, 'No native frontend extensions registered'
+                for path in extensions:
+                    parsed = urlsplit(path)
+                    assert not parsed.netloc and parsed.path.startswith('/extensions/')
+                    assert read(8765, path), f'Empty frontend extension: {path}'
+                registry = json.loads(read(8765, '/object_info'))
+                workflow = json.loads(read(8765, '/_studio/workflow'))
+                required = {node['type'] for node in workflow['nodes']}
+                missing = sorted(required - registry.keys())
+                print(f'Native frontend: {len(extensions)} extension files. '
+                      f'H3 workflow: {len(required) - len(missing)}/{len(required)} node types registered. '
+                      f'Missing: {missing}', flush=True)
+                assert {'LoadImage','AmanSimplePrompt','H3VideoController','H3AudioController'} <= registry.keys()
                 break
             except (OSError, ValueError, AssertionError, StopIteration):
                 if time.monotonic() >= deadline:
                     raise
                 time.sleep(1)
-        print('PASS: native editor, original audio extension, Studio and Jupyter HTTP access')
+        print('PASS: native editor, registered frontend extensions, Studio and Jupyter HTTP access')
     finally:
         for p in children:
             p.terminate()

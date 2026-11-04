@@ -213,6 +213,11 @@ async def engine():
         if await run_child('GPU preflight', [sys.executable, str(HERE.parent / 'preflight.py')]):
             return
         workspace = Path('/workspace/dolorain')
+        try:
+            from palette import install
+            install(workspace / 'user')
+        except (OSError, ValueError, TypeError) as exc:
+            note('Studio theme', f'Could not load colors: {exc}')
         args = [sys.executable, 'main.py', '--listen', '127.0.0.1', '--port', '8188','--disable-auto-launch']
         for flag, directory in [('models','models'),('input','input'),('output','output'),('user','user')]:
             args.extend(['--' + flag + '-directory', str(workspace / directory)])

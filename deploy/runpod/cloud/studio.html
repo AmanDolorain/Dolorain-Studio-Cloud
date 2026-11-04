@@ -44,8 +44,9 @@ $('example').onclick=async()=>{try{if(!confirm('Open the H3 example? Save any cu
  const r=await fetch('/_studio/workflow');if(!r.ok)throw Error('H3 workflow unavailable');await nativeApp.loadGraphData(await r.json());
 }catch(e){log(e.message);$('status').textContent=e.message}};
 $('theme').onclick=async()=>{try{const settings=nativeApp.ui.settings;
- const next=settings.getSettingValue('Comfy.ColorPalette')==='light'?'dark':'light';
- await settings.setSettingValue('Comfy.ColorPalette',next);document.documentElement.style.colorScheme=next;
+ const next=['light','dolorain-light'].includes(settings.getSettingValue('Comfy.ColorPalette'))?'dark':'light';
+ const palettes=settings.getSettingValue('Comfy.CustomColorPalettes')||{};
+ await settings.setSettingValue('Comfy.ColorPalette',palettes['dolorain-'+next]?'dolorain-'+next:next);document.documentElement.style.colorScheme=next;
 }catch(e){log(e.message)}};
 let reportId=0;
 async function refresh(){
