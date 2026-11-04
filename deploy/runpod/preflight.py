@@ -20,8 +20,18 @@ def main():
     name = torch.cuda.get_device_name(0)
     major, minor = torch.cuda.get_device_capability(0)
     arch = "sm_" + str(major) + str(minor)
-    if arch not in torch.cuda.get_arch_list():
-        raise SystemExit("[FAILED] GPU " + name + " architecture " + arch + " not supported by installed torch")
+    # Compatible CUDA kernels can run even without an exact architecture entry.
+    try:
+        sample = torch.ones((2, 2), device="cuda:0")
+        value = (sample @ sample + 1)[0, 0].item()
+        torch.cuda.synchronize(0)
+        if value != 3.0:
+            raise RuntimeError(f"unexpected probe result {value}")
+    except RuntimeError as exc:
+        raise SystemExit(
+            f"[FAILED] CUDA execution on {name} ({arch}), driver {raw}, "
+            f"torch {torch.__version__}, compiled architectures {torch.cuda.get_arch_list()}: {exc}"
+        ) from exc
     print("[OK] Dolorain CUDA 13.2 GPU " + name + " architecture " + arch + " driver " + raw, flush=True)
 
 
