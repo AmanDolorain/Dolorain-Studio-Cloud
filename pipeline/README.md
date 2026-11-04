@@ -1,12 +1,12 @@
-# Experimental adaptive flow
+# Independent Box Engine
 
-The original `bounded_flow.py` remains a **CPU-only bounded producer/consumer proof of concept**; `gpu_policy.py` remains a **launch-flag recommendation**, not GPU scheduling or tensor chunking.
+The transport layer is model- and workflow-agnostic:
+- `box_engine.py` accepts `Packet(payload, size_bytes, route)` envelopes and a consumer callback.
+- `bounded_flow.py` applies item/byte budgets, backpressure and consumer acknowledgement. The opaque contents are never interpreted.
+- `gpu_policy.py` is a separate **planning** utility; it does not control the Box Engine.
 
-The new `box_engine.py` makes both components visible to Dolorain Studio via the local backend bridge:
-- `GET /api/box/status` reads the current GPU probe and suggested launch policy, without applying it.
-- `POST /api/box/inspect` analyzes the Studio workflow's node IDs and connection records using the bounded CPU queue, returning counts and structural warnings. It does not submit a GPU prompt.
-- The Studio bottom **Box Engine** drawer is opt-in, collapsed by default.
+**Only** `studio/backend/box_adapter.py` knows Studio workflow nodes and links. It translates node/link metadata into opaque route identifiers; no model identity or node-type details enter the Box Engine. The Studio drawer and bridge provide read-only diagnostics and planning.
 
-No H3-specific offload, temporal chunking, model recommendation, AI inference, or ComfyUI GPU data-path changes are implemented. Do not turn planning output into live GPU flags without hardware tests.
+No external runtime dependencies or models are installed. H3 generation, GPU scheduling and provider scripts are unchanged. The CPU transport is functional, but the GPU data path is **not integrated**.
 
-See [Box Engine integration status](../docs/box-engine-integration.md) and [adaptive architecture](../docs/adaptive-flow-architecture.md).
+Details: [Box Engine status](../docs/box-engine-integration.md).

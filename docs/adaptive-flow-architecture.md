@@ -1,9 +1,9 @@
 # Dolorain Adaptive Flow Pipeline (DAFP)
 
-Status: **CPU diagnostic prototype wired to Dolorain Studio's Box Engine drawer**. GPU scheduling and MiniMax H3 execution **remain unintegrated**.
+Status: **Independent bounded CPU transport connected to Studio via an adapter; GPU scheduling and MiniMax H3 execution remain unintegrated**.
 
 ## Intent
-Two cooperating layers:
+Two cooperating layers (outside the Box Engine, the Studio adapter translates workflow metadata):
 1. Node/data flow: bounded CPU-memory queues, spill to SSD, backpressure, and release of references when downstream confirms consumption.
 2. GPU flow: inspect actual available VRAM; schedule transfers with a safety reserve; optionally overlap transfers and compute where the backend supports it.
 

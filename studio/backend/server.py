@@ -22,10 +22,12 @@ if PIPELINE.is_dir():
     sys.path.insert(0, str(PIPELINE))
 try:
     import box_engine
+    import box_adapter
 except ModuleNotFoundError as exc:
-    if exc.name not in ('box_engine', 'bounded_flow', 'gpu_policy'):
+    if exc.name not in ('box_engine', 'box_adapter', 'bounded_flow', 'gpu_policy'):
         raise
     box_engine = None
+    box_adapter = None
 MAX_JSON = 5 * 1024 * 1024
 
 def request_comfy(base, path, method='GET', body=None, content_type='application/json'):
@@ -127,7 +129,7 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == '/api/box/status':
                 if box_engine is None:
                     return self.send(503, {'error':'Box Engine pipeline not installed in this deployment.'})
-                return self.send(200, box_engine.status())
+                return self.send(200, box_adapter.status())
             if url.path == '/api/workflows':
                 return self.send(200,{'files':workflow_files.list_files(self.server.comfy, request_comfy)})
             if url.path == '/api/workflow':
@@ -207,7 +209,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.path == '/api/box/inspect':
                 if box_engine is None:
                     return self.send(503, {'error':'Box Engine pipeline not installed in this deployment.'})
-                return self.send(200, box_engine.inspect_workflow(self.body()))
+                return self.send(200, box_adapter.inspect_workflow(self.body()))
             if self.path == '/api/queue':
                 workflow = self.body()
                 schemas_raw, _ = request_comfy(self.server.comfy, '/object_info')

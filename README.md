@@ -40,8 +40,10 @@ Those existing files are preserved for compatibility and have **not** been switc
 - Windows target-machine installation, full H3 GPU video generation, and cross-provider launch integration are **not yet verified**.
 - No model weights, passwords, user workflows, generated videos, wheel bundles or large vendor dependencies are committed.
 
-## Box Engine (experimental Studio connection)
+## Independent Box Engine (transport foundation)
 
-The bottom **Box Engine** drawer is wired to the existing `pipeline/bounded_flow.py` CPU pipeline and `pipeline/gpu_policy.py` GPU **planning** policy through `pipeline/box_engine.py` and Studio bridge endpoints. It can inspect workflow connections and report VRAM planning status. It **does not** alter generation scheduling, run H3 tensor chunking, or auto-download Hugging Face models.
+The bottom Studio Box Engine panel is connected through `studio/backend/box_adapter.py` to a generic bounded transport in `pipeline/box_engine.py`. The transport has **no model, node or workflow knowledge**. Only Studio's adapter parses workflows. The CPU transport enforces bounded item and byte credits, backpressure, and release after consumer acknowledgement.
 
-See [Box Engine integration status](docs/box-engine-integration.md). The previously discussed Hugging Face connection model is **not identified/connected** yet.
+**Not a GPU data-path replacement:** GPU offloading, H3 execution scheduling, disk spill, and remote production deployment remain unimplemented. The existing generation path is unchanged. No extra model or dependency download is required.
+
+See [independent Box Engine architecture](docs/box-engine-integration.md).

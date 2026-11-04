@@ -32,8 +32,10 @@ The active tab name supports double-click rename. The workflow chooser opened wi
 
 This repository contains Studio frontend and local bridge **source**, not a portable installer. Windows testing, GPU H3 generation, provider startup wiring and standalone non-ComfyUI inference are not verified by this source-only update. Do not expose the bridge to the public internet without a separate access-controlled deployment.
 
-## Box Engine drawer (experimental)
+## Independent Box Engine drawer (experimental)
 
-The bottom **Box Engine** button opens a read-only panel. `Analyze connections` sends only the current workflow JSON to the local `POST /api/box/inspect` route, which uses the repository's `BoundedFlow` CPU queue to inspect links without changing the graph. `Refresh GPU plan` calls `GET /api/box/status` to *observe* the existing GPU policy; no flags are applied. This requires the `pipeline/` folder alongside `studio/` as in this repository checkout. A standalone Windows folder without `pipeline/` continues to work but the Box Engine panel reports unavailable until integration is deployed.
+The bottom Box Engine panel is a read-only view of the **independent transport**, with queue capacity and byte budget. `GET /api/box/status` observes transport configuration and separate GPU launch-policy recommendations. `POST /api/box/inspect` sends the current workflow to `studio/backend/box_adapter.py`, **never** to the Box Engine. The adapter validates Studio graph references and sends only opaque route IDs to the transport.
 
-Hugging Face connection intelligence is *not* installed or active. `DSC_BOX_CONNECTION_MODEL` can hold a model ID for later setup, but setting it does not download or execute a model. There are no extra Python package dependencies.
+`pipeline/box_engine.py` knows no model names, node types or workflow format. Its data-transfer API works on opaque packets with explicit sizes and acknowledgement-based release. Real GPU execution is **not** yet routed through it. No AI model, pip package, or weight file is downloaded automatically.
+
+The source checkout expects `pipeline/` next to `studio/`. Older standalone Windows distributions need their own incremental deployment of these source changes; GitHub edits do not update an existing local install.
