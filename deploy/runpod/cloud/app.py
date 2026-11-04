@@ -24,6 +24,7 @@ HOP = {'host','connection','upgrade','keep-alive','transfer-encoding','proxy-con
        'proxy-authorization','te','trailer','sec-websocket-key',
        'sec-websocket-version','sec-websocket-extensions','sec-websocket-protocol'}
 EVENTS = deque(maxlen=120)
+CONTAINER_OUTPUT = deque(maxlen=350)  # Selected Studio/ComfyUI child stdout, not RunPod host system logs.
 SECRET = re.compile(r'(?i)(?:password|token|authorization|api[_ -]?key|bearer|://[^ /]+@)')
 
 
@@ -260,6 +261,8 @@ async def run_child(stage, command, cwd=None):
     def publish(line):
         message = line.decode(errors='replace')
         print(message, flush=True)
+        if not SECRET.search(message):
+            CONTAINER_OUTPUT.append({'stage': stage, 'line': message[:800]})
         if re.search(r'\[OK\]|\[FAILED\]|error|exception|traceback|warning|cannot import|starting server|'
                      r'got prompt|prompt executed|failed to validate|not in list|return type mismatch|'
                      r'required input is missing|out of memory|device: cuda', message, re.I):
@@ -319,6 +322,8 @@ async def services(app):
         dashboard.comfy = ENGINE
         dashboard.engine_lock = threading.RLock()
         dashboard.auth_secret = None
+        dashboard.container_logs = CONTAINER_OUTPUT
+        dashboard.studio_events = EVENTS
         threading.Thread(target=dashboard.serve_forever, daemon=True).start()
         if LOCAL_PREVIEW:
             note('Local preview', 'Reusing an existing ComfyUI instance; no GPU preflight, installation or generation process started')
