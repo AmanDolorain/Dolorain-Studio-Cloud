@@ -88,7 +88,7 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
  <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
 </div>
 <span id="status" role="status" title="Backend connection" hidden></span>
-<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="असली ComfyUI नोड रेंडरर को Dolorain में जाँचें">असली नोड (टेस्ट)</button>
+<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="ComfyUI का असली Canvas">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="असली ComfyUI नोड रेंडरर को Dolorain में जाँचें">असली नोड (टेस्ट)</button>
  <button id="copyNative" hidden title="Native बदलाव नए Studio टैब में खोलें">Studio में कॉपी</button>
  <div class="generationTools" style="display:none!important" hidden><button id="generate" class="headerIcon" disabled title="Generate video" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
  <button id="logs" class="headerIcon" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
@@ -237,6 +237,15 @@ async function openNativePreview(){
    previousNativePath=workflowStore?.activeWorkflow?.path;
   }
   refreshNativeMarks();
+  // ComfyUI's palette service owns both LiteGraph canvas colors and modern node CSS.
+  // Do not replace node constructors, widgets, bypass/mute modes or serialization.
+  try{
+   const settings=nativeApp.extensionManager?.setting;
+   const mode=document.body.classList.contains('dark')?'dark':'light';
+   const palettes=settings?.get('Comfy.CustomColorPalettes')||{};
+   const selected=palettes['dolorain-'+mode]?'dolorain-'+mode:mode;
+   if(settings?.get('Comfy.ColorPalette')!==selected)await settings?.set('Comfy.ColorPalette',selected);
+  }catch(error){log('ComfyUI theme: '+error.message)}
   // Preserve native LiteGraph widgets and extension lifecycle; change presentation only.
   const nativeDoc=nativePreviewFrame.contentDocument;
   if(nativeDoc&&!nativeDoc.getElementById('dolorain-native-node-theme')){
@@ -484,7 +493,7 @@ document.addEventListener('drop',event=>{
   $('startupHint').textContent='The canvas editor did not finish initializing. Check browser console.';
  }
 },true);
-frame.onload=embedCanvas;
+frame.onload=()=>{embedCanvas();openNativePreview().catch(error=>log('Native canvas startup: '+error.message))};
 $('loadingInfo').hidden=true;
 $('status').hidden=true;
 frame.src='/_studio/dashboard/';
@@ -510,7 +519,7 @@ $('theme').onclick=()=>{
 };
 syncThemeIcon();
 $('dashboardSwitch').onclick=()=>updateEmbeddedView('dashboard');
-$('editorSwitch').onclick=()=>updateEmbeddedView('editor');
+$('editorSwitch').onclick=()=>openNativePreview();
 $('example').onclick=()=>{updateEmbeddedView('editor');frame.contentDocument?.querySelector('#fit')?.click()};
 $('generate').onclick=()=>frame.contentDocument?.querySelector('#run')?.click();
 </script></html>
