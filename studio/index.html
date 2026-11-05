@@ -1072,7 +1072,7 @@ $('import').onclick=()=>$('importFile').click();$('importFile').onchange=async e
 function loadWorkflow(data,preserveLayout=false){clearChoices();autoAddedLinks=[];wf=data;selected=null;positions={};for(let n of wf.nodes)positions[n.id]={x:n.pos?.[0]||0,y:n.pos?.[1]||0};let raw=wf.extra?.pixaromaGroups||wf.groups||[];
  raw=raw.map(g=>Array.isArray(g.bounding)?{...g,x:g.bounding[0],y:g.bounding[1],w:g.bounding[2],h:g.bounding[3]}:g);
  groups=raw.map((g,i)=>({name:g.title||'Group '+(i+1),x:g.x||0,y:g.y||0,width:g.studioWidth??(Array.isArray(g.memberIds)&&g.memberIds.every(id=>Math.abs((positions[id]?.x??g.x)-g.x-16)<5)?g.w:undefined),height:g.studioHeight,ids:Array.isArray(g.memberIds)?[...new Set(g.memberIds.filter(id=>idmap().has(id)))]:wf.nodes.filter(n=>{let p=positions[n.id];return p.x>=g.x&&p.y>=g.y&&p.x<(g.x+g.w)&&p.y<(g.y+g.h)}).map(n=>n.id)}));if(!groups.length)groups=[{name:'Workflow',x:10,y:10,ids:wf.nodes.map(n=>n.id)}];const ungrouped=wf.nodes.filter(n=>!groupOf(n.id));if(ungrouped.length)groups.push({name:'Ungrouped',x:Math.min(...ungrouped.map(n=>positions[n.id].x))-14,y:Math.min(...ungrouped.map(n=>positions[n.id].y))-42,ids:ungrouped.map(n=>n.id)});
- renderStudio();if(preserveLayout||(raw.length&&raw.every(g=>Array.isArray(g.memberIds)))){renderGraph();if(preserveLayout)initialCamera();else requestAnimationFrame(initialCamera)}else compactLayout();info('Imported '+wf.nodes.length+' nodes and '+wf.links.length+' connections')}
+ renderStudio();if(preserveLayout||(raw.length&&raw.every(g=>Array.isArray(g.memberIds)))){renderGraph();if(preserveLayout)initialCamera();else requestAnimationFrame(initialCamera)}else compactLayout();if(!schemaOnline)refreshInstalledNodeSchemas();info('Imported '+wf.nodes.length+' nodes and '+wf.links.length+' connections')}
 
 
 // File menu, theme toggle, viewport zoom and installed-node search.
@@ -1143,17 +1143,32 @@ async function loadCatalog(updateCheck=false){
  }
  catalogLoading=false;renderPicker();
 }
+let schemaLoading=null;
+async function refreshInstalledNodeSchemas(){
+ if(schemaLoading)return schemaLoading;
+ schemaLoading=(async()=>{
+  try{
+   const data=await api('/api/schema');
+   if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Invalid node schema');
+   pickerTypes=data;graphSchemas=data;schemaOnline=true;
+   renderGraph();studioAuditMissing();renderPicker();
+   return true;
+  }catch(error){
+   // Offline workflows remain viewable. Never mark nodes missing without a verified schema.
+   schemaOnline=false;
+   studioRecordLog('backend','Node definitions unavailable: '+error.message);
+   return false;
+  }finally{schemaLoading=null}
+ })();
+ return schemaLoading;
+}
 async function openPicker(at=null){
  const token=++pickerRequest;
- pickerDrop=at;picker.classList.remove('hidden');schemaOnline=false;pickerTypes={};
+ pickerDrop=at;picker.classList.remove('hidden');
  setTab('nodes');$('pickerHelp').textContent='Loading installed node types…';$('nodeQuery').focus();
- try{
-  const data=await api('/api/schema');if(token!==pickerRequest)return;
-  pickerTypes=data;graphSchemas=data;schemaOnline=true;renderGraph();studioAuditMissing();if(!catalogOnline&&!catalogLoading)loadCatalog();
- }catch{
-  if(token!==pickerRequest)return;
-  pickerTypes={};
- }
+ await refreshInstalledNodeSchemas();
+ if(token!==pickerRequest)return;
+ if(!catalogOnline&&!catalogLoading)loadCatalog();
  renderPicker();
 }
 function missingMatches(){
