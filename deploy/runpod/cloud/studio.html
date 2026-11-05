@@ -88,7 +88,7 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
  <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
 </div>
 <span id="status" role="status" title="Backend connection" hidden></span>
-<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="ComfyUI का असली Canvas">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="असली ComfyUI नोड रेंडरर को Dolorain में जाँचें">असली नोड (टेस्ट)</button>
+<div class="studioHeaderActions"><details id="dolorainMenu" class="studioTools"><summary title="Dolorain मेन्यू" aria-label="Dolorain मेन्यू">☰</summary><div class="studioToolsMenu"><button type="button" id="menuNative">नोड वर्कफ़्लो</button><button type="button" id="menuStudio">स्टूडियो मोड</button><button type="button" id="menuSettings">ComfyUI सेटिंग्स</button></div></details><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="ComfyUI का असली Canvas">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="असली ComfyUI नोड रेंडरर को Dolorain में जाँचें" hidden>असली नोड (टेस्ट)</button>
  <button id="copyNative" hidden title="Native बदलाव नए Studio टैब में खोलें">Studio में कॉपी</button>
  <div class="generationTools" style="display:none!important" hidden><button id="generate" class="headerIcon" disabled title="Generate video" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
  <button id="logs" class="headerIcon" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
@@ -258,6 +258,20 @@ async function openNativePreview(){
     '.lg-node:not([data-dolorain-missing]){--node-border-color:#269a66}'
    ].join('');
    nativeDoc.head.append(theme);
+  }
+  // UI-only shell customization: native graph, node modes and execution stay untouched.
+  const uiDoc=nativePreviewFrame.contentDocument;
+  if(uiDoc&&!uiDoc.getElementById('dolorain-native-shell')){
+   const sheet=uiDoc.createElement('style');
+   sheet.id='dolorain-native-shell';
+   sheet.textContent=[
+    'aside[aria-label*="sidebar" i],aside[aria-label*="navigation" i],',
+    '[data-testid="sidebar"],[data-testid="left-sidebar"],',
+    '.comfyui-sidebar,.sidebar-container,.side-toolbar{display:none!important}',
+    'body{--p-primary-color:#269a66;--primary-color:#269a66}',
+    '.lg-node:not([data-dolorain-missing]){--node-border-color:#269a66}'
+   ].join('');
+   uiDoc.head.append(sheet);
   }
   nativeApp.canvas.setDirty(true,true);
   $('copyNative').hidden=true;
@@ -518,6 +532,17 @@ $('theme').onclick=()=>{
  syncThemeIcon();
 };
 syncThemeIcon();
+$('menuNative').onclick=()=>{openNativePreview();$('dolorainMenu').open=false};
+$('menuStudio').onclick=()=>{updateEmbeddedView('dashboard');$('dolorainMenu').open=false};
+$('menuSettings').onclick=()=>{
+ $('dolorainMenu').open=false;
+ const win=nativePreviewFrame.contentWindow;
+ if(activeView==='native'&&win){
+  const button=[...win.document.querySelectorAll('button')].find(el=>/settings/i.test((el.getAttribute('aria-label')||'')+' '+(el.getAttribute('title')||'')));
+  if(button)button.click();
+  else log('ComfyUI settings button not found');
+ }
+};
 $('dashboardSwitch').onclick=()=>updateEmbeddedView('dashboard');
 $('editorSwitch').onclick=()=>openNativePreview();
 $('example').onclick=()=>{updateEmbeddedView('editor');frame.contentDocument?.querySelector('#fit')?.click()};
