@@ -6,7 +6,7 @@ header{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.5rem .8
 button,a{font:inherit;color:inherit;cursor:pointer;text-decoration:none;padding:.3rem .6rem;border:1px solid GrayText;border-radius:.35rem;background:Canvas}
 iframe{width:100%;flex:1;border:0}dialog{max-width:min(94vw,850px);width:850px;border-radius:.5rem}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:58vh;overflow:auto;user-select:text}
 
-/* One-line inline telemetry inside the existing Studio header, never cards. */
+.studioTools{display:none!important}\n/* One-line inline telemetry inside the existing Studio header, never cards. */
 header{flex-wrap:nowrap;gap:7px;min-height:45px;padding:5px 10px;overflow:hidden}
 header>strong{margin-right:10px;flex:0 0 auto;white-space:nowrap}
 .studioSubtitle{font-size:11px;font-weight:400;color:GrayText;margin-left:5px}
@@ -530,7 +530,7 @@ function updateEmbeddedView(view){
  $('dashboardSwitch').classList.toggle('active',studio);
  $('editorSwitch').classList.toggle('active',!studio);
  $('viewTitle').textContent=studio?'Studio Dashboard':'Workflow Editor';
- if(!studio)frame.contentWindow?.requestAnimationFrame(()=>doc.querySelector('#fit')?.click());
+ if(!studio)frame.contentWindow?.requestAnimationFrame(()=>frame.contentWindow?.initialCamera?.());
 }
 function embedCanvas(){
  try{
@@ -569,8 +569,8 @@ function embedCanvas(){
   doc.body.classList.toggle('light',!dark);
   document.body.classList.toggle('dark',dark);
   syncThemeIcon();
-  const fit=()=>doc.querySelector('#fit')?.click();
-  setTimeout(fit,300);setTimeout(fit,1000);
+  const frameAtSixty=()=>frame.contentWindow?.initialCamera?.();
+  setTimeout(frameAtSixty,300);setTimeout(frameAtSixty,1000);
   doc.addEventListener('keydown',event=>{
    if(event.key.toLowerCase()!=='r'||event.ctrlKey||event.altKey||event.metaKey||event.repeat)return;
    if(event.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
