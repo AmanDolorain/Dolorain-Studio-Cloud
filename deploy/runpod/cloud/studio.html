@@ -541,6 +541,24 @@ function embedCanvas(){
   style.id='dolorain-shell-embed';
   style.textContent='body>header{display:none!important}main{padding:0!important}#appFooter{display:flex!important}.viewport{height:calc(100dvh - 160px)!important;min-height:300px!important;border:0!important;border-radius:0!important}.flowBar{display:flex!important}';
   doc.head.append(style);
+  // Capture drops inside the iframe as well as on the outer Studio shell.
+  // Otherwise Edge may navigate to the dropped JSON before the importer runs.
+  if(!doc.documentElement.dataset.dolorainDropReady){
+   doc.documentElement.dataset.dolorainDropReady='1';
+   doc.addEventListener('dragover',event=>{
+    if(!Array.from(event.dataTransfer?.types||[]).includes('Files'))return;
+    event.preventDefault();event.stopImmediatePropagation();
+    event.dataTransfer.dropEffect='copy';
+   },true);
+   doc.addEventListener('drop',event=>{
+    if(!Array.from(event.dataTransfer?.types||[]).includes('Files'))return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const files=[...event.dataTransfer.files];
+    if(typeof frame.contentWindow?.importWorkflows==='function')
+     frame.contentWindow.importWorkflows(files);
+    else log('JSON import failed: workflow importer unavailable');
+   },true);
+  }
   updateEmbeddedView('editor');
   $('loadingInfo').hidden=true;
   $('theme').disabled=false;
