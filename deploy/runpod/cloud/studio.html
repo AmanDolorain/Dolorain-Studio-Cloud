@@ -268,6 +268,8 @@ async function openNativePreview(){
     'aside[aria-label*="sidebar" i],aside[aria-label*="navigation" i],',
     '[data-testid="sidebar"],[data-testid="left-sidebar"],',
     '.comfyui-sidebar,.sidebar-container,.side-toolbar{display:none!important}',
+    // Hide only the floating graph minimap, not the LiteGraph canvas or node widgets.
+    '[class*="minimap" i]:not(button):not(svg):not(path),[id*="minimap" i]:not(button),[data-testid*="minimap" i]:not(button){display:none!important}',
     'body{--p-primary-color:#269a66;--primary-color:#269a66}',
     '.lg-node:not([data-dolorain-missing]){--node-border-color:#269a66}'
    ].join('');
