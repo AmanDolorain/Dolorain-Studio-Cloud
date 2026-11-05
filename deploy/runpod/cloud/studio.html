@@ -40,8 +40,8 @@ header>button,header>a{font-size:11px;white-space:nowrap;padding:4px 6px;flex:no
 .studioHeader .meter{font-size:12px;color:#606a78;gap:4px}
 .studioHeader .meterHead span:last-child{font-weight:400}
 .studioHeader .meterTrack{width:22px;height:3px;opacity:.85}
-.studioHeaderActions{display:flex;align-items:center;gap:16px;margin-left:auto;flex:none}
-.studioHeader .headerIcon{border:0!important;border-radius:5px;background:transparent!important;display:inline-flex;align-items:center;justify-content:center;color:#20252b;padding:4px!important;width:34px;height:36px}
+.studioHeaderActions{display:flex;align-items:center;gap:10px;margin-left:auto;flex:none}
+.studioHeader .headerIcon{border:0!important;border-radius:5px;background:transparent!important;display:inline-flex;align-items:center;justify-content:center;color:#20252b;padding:3px!important;width:28px;height:30px;font-size:17px}
 .studioHeader .headerIcon:hover{background:#e3e7ea!important}
 .studioHeader #generate{box-shadow:none;opacity:1}
 .studioHeader #generate:disabled{opacity:.45}
@@ -49,7 +49,7 @@ header>button,header>a{font-size:11px;white-space:nowrap;padding:4px 6px;flex:no
 .studioHeader #genElapsed{font-size:11px;color:#606a78;min-width:45px}
 .studioHeader #status{flex:0 1 auto;color:#68737f;max-width:105px}
 .studioTools{position:relative}
-.studioTools>summary{list-style:none;cursor:pointer;padding:3px 6px;font-size:23px;line-height:1}
+.studioTools>summary{list-style:none;cursor:pointer;padding:3px 5px;font-size:19px;line-height:1}
 .studioTools>summary::-webkit-details-marker{display:none}
 .studioToolsMenu{position:absolute;right:0;top:34px;display:flex;flex-direction:column;gap:4px;min-width:175px;padding:9px;border:1px solid #c6cbd0;border-radius:8px;background:#f7f8fa;box-shadow:0 8px 24px #0002;z-index:50}
 .studioToolsMenu>*{text-align:left;background:transparent;border:0;color:#192029;white-space:nowrap;font-size:12px;padding:7px 8px}
@@ -93,7 +93,7 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
  <details class="studioTools"><summary title="More Studio tools" aria-label="More Studio tools">⋯</summary><div class="studioToolsMenu"><button id="example" disabled>Open H3 workflow</button><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a></div></details>
 </div>
 </header>
-<div id="studioWorkspace"><iframe title="Studio Dashboard" id="dashboardCanvas" hidden></iframe><iframe title="Native ComfyUI node graph" id="canvas"></iframe><div id="loadingInfo"><strong>ComfyUI starting…</strong><span id="startupHint">Checking native engine.</span><button id="startupDiagnostics">View startup logs</button></div></div>
+<div id="studioWorkspace"><iframe title="Studio Dashboard" id="dashboardCanvas" hidden></iframe><iframe title="Native ComfyUI node graph" id="canvas"></iframe><div id="loadingInfo"><strong>Connecting to ComfyUI…</strong><span id="startupHint">Loading the native workflow editor. This may take a moment.</span><button id="startupDiagnostics">View startup logs</button></div></div>
 <dialog id="panel"><h2>Logs · Diagnostics</h2><p>Current graph, Box Engine checks and recent execution events. Times in UTC.</p>
 <pre id="report">Checking…</pre><button id="refresh">Refresh</button> <button id="copy">Copy report</button> <button id="close">Close</button></dialog>
 <script type="module">
