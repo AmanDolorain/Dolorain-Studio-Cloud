@@ -59,8 +59,8 @@ header>button,header>a{font-size:11px;white-space:nowrap;padding:4px 6px;flex:no
 @media(max-width:1100px){.studioHeader{gap:10px}.studioHeader .gpuMetrics{gap:7px}.studioHeaderActions{gap:6px}.studioHeader .meterTrack{width:12px}}
 @media(max-width:860px){.studioHeader{overflow-x:auto;scrollbar-width:thin}.studioHeader .gpuMetrics{flex:0 0 auto}.studioHeader #status{display:none}}
 
-#studioWorkspace{position:relative;flex:1;min-height:0;display:flex}
-#studioWorkspace>iframe{display:block;flex:1;min-width:0;height:100%;background:#f5f6f7}
+#studioWorkspace{position:relative;flex:1 1 0;min-height:0;min-width:0;width:100%;display:flex;overflow:hidden;isolation:isolate}
+#studioWorkspace>iframe{display:block;flex:1 1 0;width:100%;max-width:100%;min-width:0;min-height:0;height:100%;max-height:100%;overflow:hidden;background:#f5f6f7}
 #studioWorkspace>iframe[hidden]{display:none!important}
 #loadingInfo{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;background:#f5f6f7;color:#28313a;z-index:3}
 #loadingInfo[hidden]{display:none}
@@ -237,6 +237,12 @@ async function openNativePreview(){
    previousNativePath=workflowStore?.activeWorkflow?.path;
   }
   refreshNativeMarks();
+  // Official ComfyUI setting; unlike CSS this disables the actual minimap.
+  try{
+   const settings=nativeApp.extensionManager?.setting;
+   if(settings?.get('Comfy.Minimap.Visible')!==false)
+    await settings?.set('Comfy.Minimap.Visible',false);
+  }catch(error){log('Mini Map setting: '+error.message)}
   // ComfyUI's palette service owns both LiteGraph canvas colors and modern node CSS.
   // Do not replace node constructors, widgets, bypass/mute modes or serialization.
   try{
