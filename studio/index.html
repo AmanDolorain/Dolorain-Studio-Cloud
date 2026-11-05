@@ -403,7 +403,7 @@ body > #appFooter{
 #boxEngineDock .boxActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 #boxEngineDock .boxActions button{padding:6px 10px}
 #boxEngineDock #boxResult{white-space:pre-wrap;line-height:1.5;margin-top:8px;overflow-wrap:anywhere}
-</style><script src="./canvas_size.js"></script><script src="./node_fields.js"></script><script src="./manager_catalog.js"></script><style>
+</style><!-- Removed references to three nonexistent JavaScript files; editor controls are inline below. --><style>
 /* HEADER_ICON_RHYTHM_V1: consistent optical dimensions and equal hit targets. */
 header:has(#logsButton){column-gap:12px!important;align-items:center!important}
 header :is(#studioBtn,#graphBtn,#boxToggle,#logsButton,#theme){
@@ -501,7 +501,7 @@ function movePicked(e,ids,copyOrigin){
  }
  v.addEventListener('pointermove',move);v.addEventListener('pointerup',end);v.addEventListener('pointercancel',end);v.addEventListener('lostpointercapture',end);
 }
-$('viewport').addEventListener('pointerdown',resizeStart,true);
+// No resizeStart handler is defined; existing node/group pointer handlers remain active.
 $('viewport').addEventListener('pointerdown',e=>{
  if(!e.isPrimary||e.button!==0||e.target.closest('.inlineRename,[data-port-kind],.wireHit'))return;
  const el=e.target.closest('.node'),header=e.target.closest('.group');
