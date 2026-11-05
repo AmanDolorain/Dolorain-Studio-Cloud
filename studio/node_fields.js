@@ -1,9 +1,28 @@
 // The workflow stores widget values separately from its connection sockets.
 let graphSchemas={};
 const h3PresetNames=['Custom', 'Square 128 x 128', 'Square 256 x 256', 'Square 512 x 512', 'Square 640 x 640', 'Square 768 x 768', 'Square 1024 x 1024', 'Landscape 640 x 352', 'Landscape 864 x 480', 'Portrait 480 x 864', 'Landscape 1344 x 768', 'Portrait 768 x 1344', '1080p request 1920 x 1080', 'UHD 4K request 3840 x 2160', 'Portrait 4K request 2160 x 3840', 'DCI 4K request 4096 x 2160'];
+// Offline definitions mirror the INPUT_TYPES contracts of Aman Dolorain's H3 repositories.
+// Backend schemas always take priority. Missing-node values are never discarded.
+const dolorainOfflineSchemas={
+ H3VideoController:{input:{required:{
+  duration_seconds:['FLOAT',{default:5,min:.01,max:149.66,step:.1}],
+  fps:['FLOAT',{default:24,min:24,max:24,step:1}],
+  width:['INT',{default:512,min:1,max:16384}],
+  height:['INT',{default:512,min:1,max:16384}],
+  resolution_preset:[h3PresetNames,{default:'Custom'}]
+ }}},
+ H3AudioController:{input:{required:{
+  duration:['FLOAT',{forceInput:true,default:5}],
+  audio_file:[[''],{default:''}],
+  start_seconds:['FLOAT',{default:0,min:0,max:1e12,step:.01}]
+ }}},
+ AmanSimplePrompt:{input:{required:{
+  text:['STRING',{default:'',multiline:true,dynamicPrompts:false}]
+ }}}
+};
 let templateFieldNames;
 function graphFields(n){
- const spec=graphSchemas[n.type]?.input||{}, declared={...spec.required,...spec.optional};
+ const spec=(graphSchemas[n.type]||dolorainOfflineSchemas[n.type])?.input||{}, declared={...spec.required,...spec.optional};
  const named=n.widgets_values_named||{}, values=Array.isArray(n.widgets_values)?n.widgets_values:[];
  if(!templateFieldNames){
   templateFieldNames=new Map(JSON.parse(document.getElementById('source').textContent).nodes.map(node=>[node.type,Object.keys(node.widgets_values_named||{})]));
@@ -14,6 +33,7 @@ function graphFields(n){
  });
  const saved=Object.keys(named), example=templateFieldNames.get(n.type)||[];
  let order=example.length===values.length&&example.length?example:schemaKeys;
+ if(n.type==='H3AudioController'&&values.length===3)order=['audio_file','start_seconds','audio_player'];
  if(saved.length===values.length&&saved.length&&(!order.length||!order.every(k=>saved.includes(k))))order=saved;
  if(order.length!==values.length&&values.length){
   const expanded=schemaKeys.flatMap(k=>declared[k][1]?.control_after_generate?[k,'control_after_generate']:[k]);
@@ -36,7 +56,7 @@ function graphFields(n){
   return {...f,type,opts,choices,value,label:f.key||'Setting '+(f.i+1),linked:wiredNames.has(f.key)};
  });
 }
-function multilineField(f){return f.opts.multiline||typeof f.value==='string'&&f.value.includes('\n')}
+function multilineField(f){return f.opts.multiline||f.key==='text'&&f.value?.length>100||typeof f.value==='string'&&f.value.includes('\n')}
 function fieldHeight(n){return graphFields(n).filter(f=>!f.linked).reduce((h,f)=>h+(multilineField(f)?60:31),0)}
 function mountGraphFields(card,n){
  const fields=graphFields(n);if(fields.every(f=>f.linked))return;
