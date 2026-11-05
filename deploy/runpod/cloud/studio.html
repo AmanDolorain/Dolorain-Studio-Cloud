@@ -85,7 +85,7 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
  <div class="meter" id="loadMeter" title="GPU load"><div class="meterHead"><span>Load</span><span id="gpuLoad">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
  <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
 </div>
-<span id="status" role="status" title="ComfyUI connection">Connecting…</span>
+<span id="status" role="status" title="Backend connection" hidden></span>
 <div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button>
  <div class="generationTools" style="display:none!important" hidden><button id="generate" class="headerIcon" disabled title="Generate video" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
  <button id="logs" class="headerIcon" style="display:none!important" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
@@ -517,42 +517,59 @@ $('logs').onclick=()=>{$('panel').showModal();refresh()};$('refresh').onclick=re
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('report').textContent);$('copy').textContent='Copied'}
  catch{const range=document.createRange();range.selectNodeContents($('report'));getSelection().removeAllRanges();getSelection().addRange(range);$('copy').textContent='Press Ctrl+C'}};
 
-/* Dolorain canvas: own graph UI, ComfyUI remains only the execution backend. */
-frame.onload=()=>{
+/* Dolorain Studio editor: preserve its own header menu, graph and complete footer.
+   The backend dashboard serves our HTML editor, not ComfyUI's native frontend. */
+function updateEmbeddedView(view){
+ const doc=frame.contentDocument;
+ if(!doc)return;
+ const studio=view==='dashboard';
+ doc.querySelector('#studio')?.classList.toggle('hidden',!studio);
+ doc.querySelector('#graph')?.classList.toggle('hidden',studio);
+ doc.querySelector('#appFooter')?.classList.toggle('studioMode',studio);
+ doc.querySelector('#appFooter .graphTools')?.classList.toggle('hidden',studio);
+ $('dashboardSwitch').classList.toggle('active',studio);
+ $('editorSwitch').classList.toggle('active',!studio);
+ $('viewTitle').textContent=studio?'Studio Dashboard':'Workflow Editor';
+ if(!studio)frame.contentWindow?.requestAnimationFrame(()=>doc.querySelector('#fit')?.click());
+}
+function embedCanvas(){
  try{
   const doc=frame.contentDocument;
-  if(!doc)throw Error('Dolorain canvas unavailable');
+  if(!doc?.querySelector('#viewport')||!doc.querySelector('#menuBtn')||!doc.querySelector('#appFooter'))
+   throw Error('Dolorain editor page did not load');
   const style=doc.createElement('style');
-  style.textContent='body>header{display:none!important}main{padding:0!important}#studio{display:none!important}#graph{display:block!important}.viewport{height:calc(100dvh - 112px)!important;min-height:280px!important;border:0!important;border-radius:0!important}';
+  style.id='dolorain-shell-embed';
+  style.textContent='body>header{display:none!important}main{padding:0!important}#appFooter{display:flex!important}.viewport{height:calc(100dvh - 160px)!important;min-height:300px!important;border:0!important;border-radius:0!important}.flowBar{display:flex!important}';
   doc.head.append(style);
-  // Graph view is the default; graphBtn can be hidden and clicking it is unreliable.
-  doc.querySelector('#studio')?.classList.add('hidden');
-  doc.querySelector('#graph')?.classList.remove('hidden');
-  doc.querySelector('#appFooter')?.classList.remove('hidden');
-  // The saved H3 graph uses large absolute coordinates. Fit after iframe layout settles.
-  const fitCanvas=()=>doc.querySelector('#fit')?.click();
-  frame.contentWindow?.requestAnimationFrame(()=>frame.contentWindow?.requestAnimationFrame(fitCanvas));
-  setTimeout(fitCanvas,450);
-  setTimeout(fitCanvas,1300);
+  updateEmbeddedView('editor');
   $('loadingInfo').hidden=true;
-  $('status').textContent='Dolorain canvas ready';
-  $('generate').disabled=false;
   $('theme').disabled=false;
   $('example').disabled=false;
-  const wantDark=localStorage.getItem('dolorain-shell-dark')==='true';
-  doc.body.classList.toggle('light',!wantDark);
-  document.body.classList.toggle('dark',wantDark);syncThemeIcon();
+  $('status').textContent='';
+  $('status').hidden=true;
+  const dark=localStorage.getItem('dolorain-shell-dark')==='true';
+  doc.body.classList.toggle('light',!dark);
+  document.body.classList.toggle('dark',dark);
+  syncThemeIcon();
+  const fit=()=>doc.querySelector('#fit')?.click();
+  setTimeout(fit,300);setTimeout(fit,1000);
   doc.addEventListener('keydown',event=>{
    if(event.key.toLowerCase()!=='r'||event.ctrlKey||event.altKey||event.metaKey||event.repeat)return;
    if(event.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
    event.preventDefault();refreshDolorainNodes();
   },true);
- }catch(error){log(error.message);$('startupHint').textContent=error.message;$('loadingInfo').hidden=false}
-};
+ }catch(error){
+  log('Canvas: '+error.message);
+  $('loadingInfo').hidden=false;
+  $('loadingInfo').querySelector('strong').textContent='Dolorain Editor unavailable';
+  $('startupHint').textContent=error.message;
+  $('startupDiagnostics').onclick=()=>{$('panel').showModal();refresh()};
+ }
+}
+frame.onload=embedCanvas;
 $('loadingInfo').hidden=true;
-$('status').textContent='Opening Dolorain canvas…';
+$('status').hidden=true;
 frame.src='/_studio/dashboard/';
-$('generate').onclick=()=>frame.contentDocument?.querySelector('#run')?.click();
 const moonSvg='<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d="M21 14.1A8 8 0 0 1 10 3a9.3 9.3 0 1 0 11 11.1Z"/></svg>';
 const sunSvg='<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle cx="12" cy="12" r="4.3" fill="currentColor"/><path d="M12 1.8v2.4M12 19.8v2.4M1.8 12h2.4M19.8 12h2.4M4.8 4.8l1.7 1.7m11 11 1.7 1.7M19.2 4.8l-1.7 1.7m-11 11-1.7 1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 function syncThemeIcon(){
@@ -560,26 +577,17 @@ function syncThemeIcon(){
  $('theme').innerHTML=dark?sunSvg:moonSvg;
  $('theme').title=dark?'Switch to light mode':'Switch to dark mode';
 }
+$('theme').disabled=false;
 $('theme').onclick=()=>{
  const dark=!document.body.classList.contains('dark');
  document.body.classList.toggle('dark',dark);
- const doc=frame.contentDocument;
- doc?.body?.classList.toggle('light',!dark);
- const dashboardDoc=dashboardFrame.contentDocument;
- dashboardDoc?.body?.classList.toggle('light',!dark);
+ frame.contentDocument?.body?.classList.toggle('light',!dark);
  localStorage.setItem('dolorain-shell-dark',String(dark));
  syncThemeIcon();
 };
 syncThemeIcon();
-$('example').onclick=()=>frame.contentDocument?.querySelector('#graphBtn')?.click();
-$('dashboardSwitch').onclick=()=>{
- frame.contentDocument?.querySelector('#studioBtn')?.click();
- $('viewTitle').textContent='Studio Dashboard';
- $('dashboardSwitch').classList.add('active');$('editorSwitch').classList.remove('active');
-};
-$('editorSwitch').onclick=()=>{
- frame.contentDocument?.querySelector('#graphBtn')?.click();
- $('viewTitle').textContent='Workflow Editor';
- $('editorSwitch').classList.add('active');$('dashboardSwitch').classList.remove('active');
-};
+$('dashboardSwitch').onclick=()=>updateEmbeddedView('dashboard');
+$('editorSwitch').onclick=()=>updateEmbeddedView('editor');
+$('example').onclick=()=>{updateEmbeddedView('editor');frame.contentDocument?.querySelector('#fit')?.click()};
+$('generate').onclick=()=>frame.contentDocument?.querySelector('#run')?.click();
 </script></html>
