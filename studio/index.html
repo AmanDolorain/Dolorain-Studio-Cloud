@@ -403,7 +403,7 @@ body > #appFooter{
 #boxEngineDock .boxActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 #boxEngineDock .boxActions button{padding:6px 10px}
 #boxEngineDock #boxResult{white-space:pre-wrap;line-height:1.5;margin-top:8px;overflow-wrap:anywhere}
-</style><script src="./canvas_size.js"></script><script src="./node_fields.js"></script><style>
+</style><script src="./canvas_size.js"></script><script src="./node_fields.js"></script><script src="./h3_catalog.js"></script><style>
 /* HEADER_ICON_RHYTHM_V1: consistent optical dimensions and equal hit targets. */
 header:has(#logsButton){column-gap:12px!important;align-items:center!important}
 header :is(#studioBtn,#graphBtn,#boxToggle,#logsButton,#theme){
@@ -1225,9 +1225,12 @@ function nodeEntry(box,k,v){
   card.dataset.type=k;card.title='Double-click the card to place this node';
   card.ondblclick=e=>{if(!e.target.closest('button,details'))createPickedNode(k)};
  }
- const rail=document.createElement('aside');rail.className='packActions';card.append(rail);textItem(rail,'small','Installed');
+ const rail=document.createElement('aside');rail.className='packActions';card.append(rail);const available=!!pickerTypes[k];
+ textItem(rail,'small',schemaOnline?(available?'Backend ready':'Backend missing'):'Backend unchecked');
+ if(!available&&schemaOnline)card.title='यह नोड सूची में है, लेकिन Backend में उपलब्ध नहीं है';
  if(pkg?.updateAvailable)textItem(rail,'small','Update available');
- const place=textItem(rail,'button','Add');place.dataset.type=k;place.onclick=()=>createPickedNode(k);
+ const place=textItem(rail,'button',available?'Add':'Add to canvas');place.dataset.type=k;
+ place.onclick=()=>createPickedNode(k);
  box.append(card);
 }
 
@@ -1235,8 +1238,13 @@ function renderPicker(){
  const box=$('nodeResults'),help=$('pickerHelp'),q=$('nodeQuery').value.trim().toLowerCase();
  box.replaceChildren();
  if(packTab==='nodes'){
-  help.textContent=schemaOnline?Object.keys(pickerTypes).length+' installed node types. Search and click Add to place one on the canvas.':'Installed nodes need a running engine. Open start-local.bat, or browse Install Nodes for the bundled Manager catalog.';
-  const candidates=pickerTypes;
+  help.textContent='Dolorain H3: '+(window.dolorainH3Catalog||[]).length+' bundled node types · '+(schemaOnline?Object.keys(pickerTypes).length+' Backend node types available.':'Backend status unchecked. Nodes may be placed, but execution needs the actual backend.');
+  const recommended=window.dolorainH3Catalog||[];
+  const recommendedTypes=new Set(recommended.map(item=>item.type));
+  const candidates=Object.fromEntries([
+   ...recommended.map(item=>[item.type,pickerTypes[item.type]||{display_name:item.display_name,category:item.category,description:item.description,output:item.outputs.map(p=>p.type),output_name:item.outputs.map(p=>p.name)}]),
+   ...Object.entries(pickerTypes).filter(([type])=>!recommendedTypes.has(type))
+  ]);
   const entries=Object.entries(candidates).filter(([k,v])=>(k+' '+(v.display_name||'')+' '+(v.category||'')).toLowerCase().includes(q));
   for(const [k,v] of entries.slice(0,packLimit)){
    nodeEntry(box,k,v);
