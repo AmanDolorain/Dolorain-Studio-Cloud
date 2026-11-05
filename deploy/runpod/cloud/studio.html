@@ -88,7 +88,7 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
  <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
 </div>
 <span id="status" role="status" title="Backend connection" hidden></span>
-<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="सक्रिय वर्कफ़्लो को असली ComfyUI में खोलें">Original</button>
+<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="असली ComfyUI नोड रेंडरर को Dolorain में जाँचें">असली नोड (टेस्ट)</button>
  <button id="copyNative" hidden title="Native बदलाव नए Studio टैब में खोलें">Studio में कॉपी</button>
  <div class="generationTools" style="display:none!important" hidden><button id="generate" class="headerIcon" disabled title="Generate video" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
  <button id="logs" class="headerIcon" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
@@ -200,7 +200,7 @@ async function openNativePreview(){
  $('editorSwitch').classList.remove('active');
  $('dashboardSwitch').classList.remove('active');
  $('nativePreviewSwitch').classList.add('active');
- $('viewTitle').textContent='Original · ComfyUI';
+ $('viewTitle').textContent='Dolorain · असली नोड';
  previewMessage('ComfyUI खुल रहा है…','नोड और उनकी extensions लोड हो रही हैं।');
  try{
   const response=await fetch('/_studio/ready',{cache:'no-store',signal:AbortSignal.timeout(8000)});
@@ -237,15 +237,28 @@ async function openNativePreview(){
    previousNativePath=workflowStore?.activeWorkflow?.path;
   }
   refreshNativeMarks();
+  // Preserve native LiteGraph widgets and extension lifecycle; change presentation only.
+  const nativeDoc=nativePreviewFrame.contentDocument;
+  if(nativeDoc&&!nativeDoc.getElementById('dolorain-native-node-theme')){
+   const theme=nativeDoc.createElement('style');
+   theme.id='dolorain-native-node-theme';
+   theme.textContent=[
+    '.lg-node[data-dolorain-missing]{outline:3px solid #ef3349!important}',
+    '.lg-node[data-dolorain-missing] .lg-node-header{background:#991b1b!important;color:#fff!important}',
+    '.lg-node:not([data-dolorain-missing]) .lg-node-header{border-color:#269a66!important}',
+    '.lg-node:not([data-dolorain-missing]){--node-border-color:#269a66}'
+   ].join('');
+   nativeDoc.head.append(theme);
+  }
   nativeApp.canvas.setDirty(true,true);
-  $('copyNative').hidden=false;
-  $('viewTitle').textContent='Original · '+snapshot.name;
+  $('copyNative').hidden=true;
+  $('viewTitle').textContent='Dolorain · '+snapshot.name;
   $('loadingInfo').hidden=true;
   log('असली ComfyUI Canvas · '+snapshot.name+' · '+nativeApp.graph._nodes.length+' नोड');
  }catch(error){
   if(request!==previewRequest)return;
   log('Original · '+error.message);
-  previewMessage('Original नहीं खुला',error.message+' Original दबाकर फिर कोशिश करें।');
+  previewMessage('असली नोड नहीं खुले',error.message+' असली नोड (टेस्ट) दबाकर फिर कोशिश करें।');
   if(!nativeApp)nativePreviewFrame.removeAttribute('src');
  }
 }
