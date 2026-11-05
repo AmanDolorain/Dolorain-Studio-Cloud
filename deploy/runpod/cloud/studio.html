@@ -86,14 +86,14 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
  <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
 </div>
 <span id="status" role="status" title="Backend connection" hidden></span>
-<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button>
+<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="Original ComfyUI renderer (preview)">Original</button>
  <div class="generationTools" style="display:none!important" hidden><button id="generate" class="headerIcon" disabled title="Generate video" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
  <button id="logs" class="headerIcon" style="display:none!important" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
  <button id="theme" class="headerIcon" disabled title="Light / Dark" aria-label="Toggle light and dark"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M20.1 15.8A8.8 8.8 0 0 1 8.2 3.9 9 9 0 1 0 20.1 15.8Z"/></svg></button>
  <details class="studioTools"><summary title="More Studio tools" aria-label="More Studio tools">⋯</summary><div class="studioToolsMenu"><button id="example" disabled>Open H3 workflow</button><button id="nodeManager">Dolorain Node Manager</button><button id="reloadNodes">Refresh nodes (R)</button><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a></div></details>
 </div>
 </header>
-<div id="studioWorkspace"><iframe title="Studio Dashboard" id="dashboardCanvas" hidden></iframe><iframe title="Dolorain Studio workflow canvas" id="canvas"></iframe><div id="loadingInfo" hidden><strong>Dolorain Canvas unavailable</strong><span id="startupHint">Check Studio backend connection.</span><button id="startupDiagnostics">View logs</button></div></div>
+<div id="studioWorkspace"><iframe title="Studio Dashboard" id="dashboardCanvas" hidden></iframe><iframe title="Dolorain Studio workflow canvas" id="canvas"></iframe><iframe title="Original ComfyUI workflow renderer" id="nativePreviewCanvas" hidden></iframe><div id="loadingInfo" hidden><strong>Dolorain Canvas unavailable</strong><span id="startupHint">Check Studio backend connection.</span><button id="startupDiagnostics">View logs</button></div></div>
 <dialog id="panel"><h2>Logs · Diagnostics</h2><p>Current graph, Box Engine checks and recent execution events. Times in UTC.</p>
 <pre id="report">Checking…</pre><button id="refresh">Refresh</button> <button id="copy">Copy report</button> <button id="close">Close</button></dialog>
 <dialog id="nodePanel"><h2>Dolorain Node Manager</h2><p>Curated H3 node catalog. Refresh checks installed engine nodes without reloading the page or changing your workflow.</p><p id="nodeState" role="status">Not checked yet.</p><div id="nodeCatalog"></div><button id="nodePanelRefresh">Refresh nodes (R)</button> <button id="nodePanelClose">Close</button></dialog>
@@ -150,6 +150,41 @@ window.addEventListener('keydown',event=>{
  if(target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
  event.preventDefault();refreshDolorainNodes();
 });
+// Opt-in native renderer preview. The working Dolorain canvas is never replaced.
+const nativePreviewFrame=$('nativePreviewCanvas');
+let nativePreviewStarted=false,nativePreviewReady=false;
+async function openNativePreview(){
+ const ready=await fetch('/_studio/ready',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
+ if(!ready?.ready){alert('Original ComfyUI renderer needs a connected ComfyUI backend. The Dolorain canvas is unchanged.');return}
+ activeView='native';
+ dashboardFrame.hidden=true;frame.hidden=true;nativePreviewFrame.hidden=false;
+ $('dashboardSwitch').classList.remove('active');$('editorSwitch').classList.remove('active');
+ $('nativePreviewSwitch').classList.add('active');$('viewTitle').textContent='Original ComfyUI Renderer';
+ if(nativePreviewStarted)return;
+ nativePreviewStarted=true;
+ nativePreviewFrame.onload=async()=>{
+  try{
+   const win=nativePreviewFrame.contentWindow;
+   const load=win.Function('path','return import(path)');
+   const app=(await load('/scripts/app.js')).app;
+   const started=Date.now();
+   while(!app.graph&&Date.now()-started<30000)await delay(200);
+   if(!app.graph)throw Error('Original ComfyUI graph did not initialize');
+   const response=await fetch('/_studio/workflow',{cache:'no-store'});
+   if(!response.ok)throw Error('Workflow JSON HTTP '+response.status);
+   await app.loadGraphData(await response.json(),true,true,'H3 Original Preview');
+   // LiteGraph renders installed and missing nodes natively; do not rebuild widgets.
+   // This mode is a preview: never queue generation or overwrite saved workflows.
+   const style=win.document.createElement('style');
+   style.textContent='.lg-node[data-dolorain-missing="true"]{outline:2px solid #ef3349!important}';
+   win.document.head.append(style);
+   nativePreviewReady=true;
+   log('Original ComfyUI renderer loaded for comparison');
+  }catch(e){nativePreviewStarted=false;log('Native preview: '+e.message);alert('Original renderer unavailable: '+e.message)}
+ };
+ nativePreviewFrame.src='/?studio_canvas=1';
+}
+$('nativePreviewSwitch').onclick=openNativePreview;
 let activeView='editor';
 function switchView(view){
  activeView=view;
@@ -158,6 +193,8 @@ function switchView(view){
  $('viewTitle').textContent=view==='dashboard'?'Studio Dashboard':'Workflow Editor';
  dashboardFrame.hidden=view!=='dashboard';
  frame.hidden=view!=='editor';
+ nativePreviewFrame.hidden=true;
+ $('nativePreviewSwitch').classList.remove('active');
  $('loadingInfo').hidden=true;
  if(view==='dashboard'&&!dashboardFrame.src){
   dashboardFrame.addEventListener('load',()=>{
