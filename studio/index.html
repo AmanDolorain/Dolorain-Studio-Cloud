@@ -403,7 +403,7 @@ body > #appFooter{
 #boxEngineDock .boxActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
 #boxEngineDock .boxActions button{padding:6px 10px}
 #boxEngineDock #boxResult{white-space:pre-wrap;line-height:1.5;margin-top:8px;overflow-wrap:anywhere}
-</style><script src="./canvas_size.js"></script><script src="./node_fields.js"></script><script src="./h3_catalog.js"></script><style>
+</style><script src="./canvas_size.js"></script><script src="./node_fields.js"></script><script src="./h3_catalog.js"></script><script src="./dolorain_packs.js"></script><style>
 /* HEADER_ICON_RHYTHM_V1: consistent optical dimensions and equal hit targets. */
 header:has(#logsButton){column-gap:12px!important;align-items:center!important}
 header :is(#studioBtn,#graphBtn,#boxToggle,#logsButton,#theme){
@@ -1264,6 +1264,24 @@ function renderPicker(){
  if(!packs){help.textContent=catalogError||'Loading node manager database…';return}
  if(packTab==='missing'&&!schemaOnline){help.textContent='Connect the engine to check which workflow nodes are missing.';return}
  const missing=packTab==='missing'?missingMatches():null;
+ const curated=(window.dolorainPacks||[]).filter(p=>[p.name,p.repository,...p.types].join(' ').toLowerCase().includes(q));
+ if(packTab==='catalog'&&!missing){
+  for(const p of curated){
+   const row=document.createElement('div');row.className='packRow';
+   const label=document.createElement('div');row.append(label);
+   textItem(label,'strong',p.name);
+   textItem(label,'small','Aman Dolorain · '+p.version+' · '+(p.workflow?'H3 workflow':'Additional pack'));
+   textItem(label,'small',p.repository);
+   fold(label,'Node types',p.types);
+   const action=textItem(row,'button','Install');action.className='installAction';
+   const st=installStates.get(p.repository);
+   action.disabled=!catalogOnline||!!st&&st.state!=='error';
+   action.title=catalogOnline?'Install through connected ComfyUI Manager':'Connect ComfyUI Manager to install';
+   action.onclick=()=>installPack(p.repository,{github:p.repository});
+   if(st)mountMeter(row,p.repository,st);
+   box.append(row);
+  }
+ }
  const list=packs.filter(p=>(!missing||missing.byPack.has(p.key))&&
   [p.name,p.author,p.id,p.description,...(missing?.byPack.get(p.key)||p.types)].join(' ').toLowerCase().includes(q));
  help.textContent=missing?missing.count+' missing node type(s) in this workflow.':(catalogOnline?packs.length+' live Manager packs.':packs.length+' packs from the bundled Manager catalog. '+(catalogLoading?'Connecting to your engine…':catalogError||'Run start-local.bat for installation.'));
