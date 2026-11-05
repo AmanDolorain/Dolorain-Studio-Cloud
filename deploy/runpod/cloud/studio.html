@@ -87,8 +87,8 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
 </div>
 <span id="status" role="status" title="ComfyUI connection">Connecting…</span>
 <div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button>
- <div class="generationTools"><button id="generate" class="headerIcon" disabled title="Generate with native ComfyUI" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
- <button id="logs" class="headerIcon" title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
+ <div class="generationTools"><button id="generate" class="headerIcon" disabled title="Generate video" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
+ <button id="logs" class="headerIcon" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
  <button id="theme" class="headerIcon" disabled title="Light / Dark" aria-label="Toggle light and dark"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M20.1 15.8A8.8 8.8 0 0 1 8.2 3.9 9 9 0 1 0 20.1 15.8Z"/></svg></button>
  <details class="studioTools"><summary title="More Studio tools" aria-label="More Studio tools">⋯</summary><div class="studioToolsMenu"><button id="example" disabled>Open H3 workflow</button><button id="nodeManager">Dolorain Node Manager</button><button id="reloadNodes">Refresh nodes (R)</button><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a></div></details>
 </div>
@@ -522,14 +522,22 @@ frame.onload=()=>{
   const doc=frame.contentDocument;
   if(!doc)throw Error('Dolorain canvas unavailable');
   const style=doc.createElement('style');
-  style.textContent='body>header{display:none!important}main{padding:0!important}.viewport{height:calc(100dvh - 110px)!important;min-height:280px!important;border:0!important;border-radius:0!important}';
+  style.textContent='body>header{display:none!important}main{padding:0!important}.viewport{height:calc(100dvh - 110px)!important;min-height:280px!important;border:0!important;border-radius:0!important}#appFooter{bottom:0!important}';
   doc.head.append(style);
   doc.querySelector('#graphBtn')?.click();
+  // The saved H3 graph uses large absolute coordinates. Fit after iframe layout settles.
+  const fitCanvas=()=>doc.querySelector('#fit')?.click();
+  frame.contentWindow?.requestAnimationFrame(()=>frame.contentWindow?.requestAnimationFrame(fitCanvas));
+  setTimeout(fitCanvas,450);
   $('loadingInfo').hidden=true;
   $('status').textContent='Dolorain canvas ready';
   $('generate').disabled=false;
   $('theme').disabled=false;
   $('example').disabled=false;
+  const wantDark=localStorage.getItem('dolorain-shell-dark')==='true';
+  const currentDark=!doc.body.classList.contains('light');
+  if(wantDark!==currentDark)doc.querySelector('#theme')?.click();
+  document.body.classList.toggle('dark',wantDark);syncThemeIcon();
   doc.addEventListener('keydown',event=>{
    if(event.key.toLowerCase()!=='r'||event.ctrlKey||event.altKey||event.metaKey||event.repeat)return;
    if(event.target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
@@ -541,7 +549,22 @@ $('loadingInfo').hidden=true;
 $('status').textContent='Opening Dolorain canvas…';
 frame.src='/_studio/dashboard/';
 $('generate').onclick=()=>frame.contentDocument?.querySelector('#run')?.click();
-$('theme').onclick=()=>{frame.contentDocument?.querySelector('#theme')?.click();document.body.classList.toggle('dark')};
+const moonSvg='<svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M20.1 15.8A8.8 8.8 0 0 1 8.2 3.9 9 9 0 1 0 20.1 15.8Z"/></svg>';
+const sunSvg='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+function syncThemeIcon(){
+ const isDark=document.body.classList.contains('dark');
+ $('theme').innerHTML=isDark?sunSvg:moonSvg;
+ $('theme').title=isDark?'Switch to light mode':'Switch to dark mode';
+}
+$('theme').onclick=()=>{
+ const doc=frame.contentDocument;
+ doc?.querySelector('#theme')?.click();
+ const isDark=doc?.body?.classList.contains('light')===false;
+ document.body.classList.toggle('dark',isDark);
+ localStorage.setItem('dolorain-shell-dark',String(isDark));
+ syncThemeIcon();
+};
+syncThemeIcon();
 $('example').onclick=()=>frame.contentDocument?.querySelector('#graphBtn')?.click();
 $('dashboardSwitch').onclick=()=>{
  frame.contentDocument?.querySelector('#studioBtn')?.click();
