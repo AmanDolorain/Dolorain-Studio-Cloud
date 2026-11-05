@@ -2,6 +2,20 @@
 
 **Dolorain Studio** is the primary workflow editor interface. This repository contains the Studio editor source under [`studio/`](studio/) and the existing Vast.ai / RunPod GPU setup scripts.
 
+## Windows local Native Studio preview (existing ComfyUI Easy Install)
+
+**Use `START-DOLORAIN-LOCAL.bat` from the repository root for the NEW native preview.**
+Do not use the older `studio/start-local.bat` from the source ZIP; that launcher targets a different full distribution and could install dependencies.
+
+1. Open your existing ComfyUI Easy Install in the usual way. Keep it running on `http://127.0.0.1:8188`. Opening the local ComfyUI webpage first is a simple check.
+2. Extract the most recent **feature-branch** ZIP. Double-click **`START-DOLORAIN-LOCAL.bat`** in the extracted repository root (alongside this README). This launches the same cloud Studio HTML / shared header / native ComfyUI Canvas via a localhost proxy.
+3. Open `http://127.0.0.1:8765` in Edge if it does not open automatically. Use Dashboard/Editor switch, Theme, Workflow JSON drag/drop and diagnostics.
+4. Close the launcher window or press Ctrl+C to stop the preview. Your original ComfyUI installation is not modified.
+
+Launcher uses the user's current Easy Install directory `C:\Users\Aman\Downloads\ComfyUI-Easy-Install\ComfyUI-Easy-Install`, but actual ComfyUI backend discovery relies on port 8188, not a hardwired Python executable. It tries common Easy Install Python locations and existing system Python interpreters that already provide `aiohttp`. To override Python selection, set `DSC_PYTHON` in Windows to the ComfyUI Python executable. It **will not install Python, aiohttp, ComfyUI, custom nodes, models or CUDA**. If Python with aiohttp is unavailable, the launcher stops and prints the reason.
+
+**Important:** This is a feature-branch source preview, not a pretested Windows installer. Native canvas/UI behavior depends on the installed ComfyUI Easy Install version and its frontend extension hooks. Some preview integrations may require fixes. Your installed custom-node packages determine actual widgets and missing-node behavior. No GPU inference is requested by the launcher. Port 8765 binds localhost ONLY in preview mode; the no-password setting must not be used on a public web server.
+
 ## Studio workflow editor
 
 - Studio View and editable Node Graph View use the same workflow.

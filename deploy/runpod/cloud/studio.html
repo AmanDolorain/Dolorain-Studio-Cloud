@@ -5,18 +5,410 @@
 header{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.5rem .8rem;border-bottom:1px solid GrayText}strong{margin-right:auto}
 button,a{font:inherit;color:inherit;cursor:pointer;text-decoration:none;padding:.3rem .6rem;border:1px solid GrayText;border-radius:.35rem;background:Canvas}
 iframe{width:100%;flex:1;border:0}dialog{max-width:min(94vw,850px);width:850px;border-radius:.5rem}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:58vh;overflow:auto;user-select:text}
+
+/* One-line inline telemetry inside the existing Studio header, never cards. */
+header{flex-wrap:nowrap;gap:7px;min-height:45px;padding:5px 10px;overflow:hidden}
+header>strong{margin-right:10px;flex:0 0 auto;white-space:nowrap}
+.studioSubtitle{font-size:11px;font-weight:400;color:GrayText;margin-left:5px}
+header>#status{font-size:11px;max-width:116px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+.gpuMetrics{display:flex;align-items:center;gap:9px;flex:1 1 auto;min-width:0;overflow:hidden;white-space:nowrap}
+.gpuName{font-weight:650;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:0 1 170px;font-size:11px}
+.meter{display:inline-flex;align-items:center;gap:4px;flex:0 1 auto;min-width:0;padding:0;border:0;border-radius:0;background:transparent;font-size:10px;white-space:nowrap}
+.meterHead{display:inline-flex;align-items:center;gap:4px;color:inherit;font-variant-numeric:tabular-nums}
+.meterHead span:last-child{font-weight:600}
+.meterTrack{width:23px;height:4px;border-radius:3px;background:#6666;overflow:hidden;flex:none}
+.meterFill{display:block;width:0;height:100%;border-radius:3px;background:#16a34a;transition:width .25s}
+.meter[data-level="warn"] .meterFill{background:#eab308}
+.meter[data-level="high"] .meterFill{background:#dc2626}
+.generationTools{display:inline-flex;align-items:center;gap:6px;flex:none;margin:0}
+#generate{background:#16a34a;color:white;border-color:#15803d;border-radius:999px;font-weight:650}
+#generate:hover{background:#15803d}
+#generate:disabled{opacity:.45;cursor:wait}
+#genElapsed{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px}
+header>button,header>a{font-size:11px;white-space:nowrap;padding:4px 6px;flex:none}
+@media(max-width:1150px){.meterTrack{width:14px}.gpuMetrics{gap:5px}.gpuName{max-width:116px}header>#status{max-width:75px}}
+@media(max-width:850px){header{overflow-x:auto;scrollbar-width:thin}.gpuMetrics{flex:0 0 auto}.gpuName{max-width:135px}}
+
+/* Screenshot-matched flat toolbar: logo, label, telemetry, and 3 native actions. */
+.studioHeader{height:69px;min-height:69px;background:#f7f8fa;color:#192029;border-bottom:1px solid #c6cbd0;gap:20px;padding:0 11px;overflow:visible}
+.studioBrand{display:flex;align-items:center;gap:8px;white-space:nowrap;flex:none}
+.studioBrand img{width:38px;height:38px;display:block}
+.studioBrand strong{font-size:19px;font-weight:750;margin:0}
+.studioSubtitle{color:#596575;font-size:12px;font-weight:600;margin-left:-3px}
+.studioHeader .gpuMetrics{gap:18px;align-items:center;overflow:hidden}
+.studioHeader .gpuName{font-size:13px;font-weight:500;color:#192029;max-width:210px;flex:0 1 auto}
+.studioHeader .meter{font-size:12px;color:#606a78;gap:4px}
+.studioHeader .meterHead span:last-child{font-weight:400}
+.studioHeader .meterTrack{width:22px;height:3px;opacity:.85}
+.studioHeaderActions{display:flex;align-items:center;gap:10px;margin-left:auto;flex:none}
+.studioHeader .headerIcon{border:0!important;border-radius:5px;background:transparent!important;display:inline-flex;align-items:center;justify-content:center;color:#20252b;padding:3px!important;width:28px;height:30px;font-size:17px}
+.studioHeader .headerIcon:hover{background:#e3e7ea!important}
+.studioHeader #generate{box-shadow:none;opacity:1}
+.studioHeader #generate:disabled{opacity:.45}
+.studioHeader .generationTools{gap:3px;align-items:center}
+.studioHeader #genElapsed{font-size:11px;color:#606a78;min-width:45px}
+.studioHeader #status{flex:0 1 auto;color:#68737f;max-width:105px}
+.studioTools{position:relative}
+.studioTools>summary{list-style:none;cursor:pointer;padding:3px 5px;font-size:19px;line-height:1}
+.studioTools>summary::-webkit-details-marker{display:none}
+.studioToolsMenu{position:absolute;right:0;top:34px;display:flex;flex-direction:column;gap:4px;min-width:175px;padding:9px;border:1px solid #c6cbd0;border-radius:8px;background:#f7f8fa;box-shadow:0 8px 24px #0002;z-index:50}
+.studioToolsMenu>*{text-align:left;background:transparent;border:0;color:#192029;white-space:nowrap;font-size:12px;padding:7px 8px}
+.studioToolsMenu>[hidden]{display:none}
+@media(max-width:1100px){.studioHeader{gap:10px}.studioHeader .gpuMetrics{gap:7px}.studioHeaderActions{gap:6px}.studioHeader .meterTrack{width:12px}}
+@media(max-width:860px){.studioHeader{overflow-x:auto;scrollbar-width:thin}.studioHeader .gpuMetrics{flex:0 0 auto}.studioHeader #status{display:none}}
+
+#studioWorkspace{position:relative;flex:1;min-height:0;display:flex}
+#studioWorkspace>iframe{display:block;flex:1;min-width:0;height:100%;background:#f5f6f7}
+#studioWorkspace>iframe[hidden]{display:none!important}
+#loadingInfo{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;background:#f5f6f7;color:#28313a;z-index:3}
+#loadingInfo[hidden]{display:none}
+#loadingInfo strong{margin:0}
+#startupDiagnostics{border:1px solid #18a957;color:#168b49;background:transparent}
+#startupDiagnostics:hover{background:#18a957;color:white}
+.studioHeader button:hover,.studioHeader button.active{color:#168b49!important;background:#dcfce7!important}
+.studioHeader button:focus-visible{outline:2px solid #18a957;outline-offset:2px}
+.studioHeader .headerIcon.active{border-bottom:2px solid #18a957!important}
+body.dark{background:#111315;color:#e9eaec}
+body.dark .studioHeader{background:#1b1e21;color:#e9eaec;border-color:#43484e}
+body.dark .studioHeader .gpuName,body.dark .studioHeader .headerIcon{color:#e9eaec}
+body.dark .studioHeader .meter,body.dark .studioHeader #status,body.dark .studioSubtitle{color:#a3a7ad}
+body.dark #loadingInfo{background:#111315;color:#e9eaec}
+body.dark #studioWorkspace>iframe{background:#111315}
+body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.active{background:#173726!important;color:#4ade80!important}
 </style>
-<header><strong>Dolorain Studio</strong><span id="status" role="status">Connecting to engine…</span>
-<button id="example" disabled>Open H3 workflow</button><button id="theme" disabled>Light / Dark</button>
-<a href="/_studio/dashboard/" target="_blank" rel="noopener">Studio dashboard</a><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a><button id="logs">Logs · Diagnostics</button></header>
-<iframe title="Native node graph" id="canvas"></iframe>
+<header class="studioHeader">
+<div class="studioBrand"><img src="/_studio/brand/d-logo.svg" alt="D" width="38" height="38"><strong>Dolorain Studio</strong><span class="studioSubtitle" id="viewTitle">Workflow Editor</span></div>
+<div class="gpuMetrics" id="gpuMetrics" aria-label="GPU and RAM monitoring">
+ <span id="gpuName" class="gpuName" title="Detected GPU model">GPU —</span>
+ <div class="meter" id="vramMeter" title="VRAM used / total"><div class="meterHead"><span>VRAM</span><span id="gpuVram">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+ <div class="meter" id="ramMeter" title="RAM used / total"><div class="meterHead"><span>RAM</span><span id="ramValue">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+ <div class="meter" id="loadMeter" title="GPU load"><div class="meterHead"><span>Load</span><span id="gpuLoad">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+ <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
+</div>
+<span id="status" role="status" title="ComfyUI connection">Connecting…</span>
+<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button>
+ <div class="generationTools"><button id="generate" class="headerIcon" disabled title="Generate with native ComfyUI" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
+ <button id="logs" class="headerIcon" title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
+ <button id="theme" class="headerIcon" disabled title="Light / Dark" aria-label="Toggle light and dark"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M20.1 15.8A8.8 8.8 0 0 1 8.2 3.9 9 9 0 1 0 20.1 15.8Z"/></svg></button>
+ <details class="studioTools"><summary title="More Studio tools" aria-label="More Studio tools">⋯</summary><div class="studioToolsMenu"><button id="example" disabled>Open H3 workflow</button><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a></div></details>
+</div>
+</header>
+<div id="studioWorkspace"><iframe title="Studio Dashboard" id="dashboardCanvas" hidden></iframe><iframe title="Native ComfyUI node graph" id="canvas"></iframe><div id="loadingInfo"><strong>Connecting to ComfyUI…</strong><span id="startupHint">Loading the native workflow editor. This may take a moment.</span><button id="startupDiagnostics">View startup logs</button></div></div>
 <dialog id="panel"><h2>Logs · Diagnostics</h2><p>Current graph, Box Engine checks and recent execution events. Times in UTC.</p>
 <pre id="report">Checking…</pre><button id="refresh">Refresh</button> <button id="copy">Copy report</button> <button id="close">Close</button></dialog>
 <script type="module">
 const $=id=>document.getElementById(id), frame=$('canvas'), events=[];
 let nativeApp, nativeApi;
+const dashboardFrame=$('dashboardCanvas');
+let activeView='editor';
+function switchView(view){
+ activeView=view;
+ $('dashboardSwitch').classList.toggle('active',view==='dashboard');
+ $('editorSwitch').classList.toggle('active',view==='editor');
+ $('viewTitle').textContent=view==='dashboard'?'Studio Dashboard':'Workflow Editor';
+ dashboardFrame.hidden=view!=='dashboard';
+ frame.hidden=view!=='editor';
+ $('loadingInfo').hidden=view!=='editor'||Boolean(nativeApp?.graph);
+ if(view==='dashboard'&&!dashboardFrame.src){
+  dashboardFrame.addEventListener('load',()=>{
+   try{
+    const doc=dashboardFrame.contentDocument;
+    const style=doc.createElement('style');
+    style.textContent='body>header,body>.flowBar,#appFooter{display:none!important}main{padding:12px!important}#studio{display:grid!important}#graph{display:none!important}';
+    doc.head.appendChild(style);
+    doc.querySelector('#studioBtn')?.click();
+   }catch(e){log('Dashboard view: '+e.message)}
+  },{once:true});
+  dashboardFrame.src='/_studio/dashboard/';
+ }
+}
+$('dashboardSwitch').onclick=()=>switchView('dashboard');
+$('editorSwitch').onclick=()=>switchView('editor');
+$('startupDiagnostics').onclick=()=>$('logs').click();
+
 function log(message){events.push(new Date().toISOString()+' '+String(message).slice(0,420));if(events.length>80)events.shift()}
 function delay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+
+const gb=n=>Number.isFinite(n)?(n/1073741824).toFixed(1)+'G':'—';
+const percent=(used,total)=>Number.isFinite(used)&&Number.isFinite(total)&&total>0?100*used/total:null;
+function meter(id,label,pct){
+ const el=$(id),p=Number.isFinite(pct)?Math.max(0,Math.min(100,pct)):null;
+ el.querySelector('.meterFill').style.width=(p===null?0:p)+'%';
+ el.querySelector('.meterHead span:last-child').textContent=label;
+ el.dataset.level=p===null?'unknown':p>=90?'high':p>=75?'warn':'normal';
+}
+async function refreshTelemetry(){
+ try{
+  const response=await fetch('/_studio/telemetry',{cache:'no-store'});
+  if(!response.ok)throw Error('Telemetry HTTP '+response.status);
+  const data=await response.json(),g=data.gpu||{},ram=data.ram||{};
+  $('gpuName').textContent=g.name||'GPU unavailable';
+  meter('vramMeter',gb(g.vram_used_bytes)+' / '+gb(g.vram_total_bytes),
+   percent(g.vram_used_bytes,g.vram_total_bytes));
+  meter('ramMeter',gb(ram.used_bytes)+' / '+gb(ram.total_bytes),
+   percent(ram.used_bytes,ram.total_bytes));
+  meter('loadMeter',Number.isFinite(g.load_percent)?Math.round(g.load_percent)+'%':'—',g.load_percent);
+  // Temperature is a reading, not memory utilization. Use relative safety
+  // ranges purely for bar visualization, never call it GPU load.
+  meter('tempMeter',Number.isFinite(g.temperature_c)?Math.round(g.temperature_c)+'°C':'—',
+   Number.isFinite(g.temperature_c)?g.temperature_c:null);
+ }catch(error){
+  $('gpuName').textContent='GPU unavailable';
+  for(const id of ['vramMeter','ramMeter','loadMeter','tempMeter'])meter(id,'—',null);
+  log('Telemetry: '+error.message);
+ }
+}
+setInterval(refreshTelemetry,10000);void refreshTelemetry();
+let generationStartedAt=null,generationRunning=false;
+function elapsedLabel(ms){
+ const secs=Math.max(0,Math.floor(ms/1000));
+ return [Math.floor(secs/3600),Math.floor(secs%3600/60),secs%60].map(n=>String(n).padStart(2,'0')).join(':');
+}
+function displayElapsed(){
+ if(generationRunning&&generationStartedAt!==null)
+  $('genElapsed').textContent='Time '+elapsedLabel(Date.now()-generationStartedAt);
+}
+setInterval(displayElapsed,1000);
+function trackGeneration(name){
+ if(name==='execution_start'){
+  generationStartedAt=Date.now();generationRunning=true;displayElapsed();
+ }else if(['execution_success','execution_error','execution_interrupted'].includes(name)){
+  displayElapsed();generationRunning=false;
+ }
+}
+$('generate').onclick=async()=>{
+ if(!nativeApp?.queuePrompt)return;
+ $('generate').disabled=true;
+ try{
+  // Native ComfyUI queue method preserves the real workflow's validation
+  // and optional custom-node execution behaviour.
+  await nativeApp.queuePrompt(0);
+ }catch(error){
+  log('Generate: '+error.message);
+  $('status').textContent='Generate failed · see Logs';
+ }finally{$('generate').disabled=false}
+};
+
+// Keep original ComfyUI tabs, file handling, and nodes; protect JSON drops from
+// Edge/browser navigation even when the drop target is inside the iframe.
+let jsonDropBusy=false, missingNodeObserver, missingRefreshQueued=false;
+function markMissingNodes(){
+ missingRefreshQueued=false;
+ const doc=frame.contentDocument;
+ if(!doc||!nativeApp?.graph)return;
+ const nodes=nativeApp.graph._nodes||[];
+ const missing=new Set(nodes.filter(n=>n.has_errors&&n.last_serialization).map(n=>String(n.id)));
+ // Classic LiteGraph nodes are canvas-drawn; DOM CSS cannot color them.
+ // Only recolor verifiably missing native placeholder nodes.
+ let changed=false;
+ for(const node of nodes){
+  if(!missing.has(String(node.id)))continue;
+  if(node.__dolorainMissingMarked)continue;
+  node.__dolorainMissingMarked=true;
+  node.color='#991b1b';
+  node.bgcolor='#451a1a';
+  changed=true;
+ }
+ if(changed)nativeApp.graph.setDirtyCanvas?.(true,true);
+ // Keep compatibility with the optional Vue node DOM renderer.
+ for(const element of doc.querySelectorAll('.lg-node[data-node-id]')){
+  if(missing.has(element.dataset.nodeId))element.dataset.dolorainMissing='true';
+  else delete element.dataset.dolorainMissing;
+ }
+}
+function frameWorkflowAtSixtyPercent(){
+ const graph=nativeApp?.graph, canvas=nativeApp?.canvas;
+ const nodes=graph?._nodes||[];
+ if(!canvas?.ds||!nodes.length)return;
+ const positions=nodes.map(n=>n.pos).filter(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+ if(!positions.length)return;
+ const x=Math.min(...positions.map(p=>p[0])), y=Math.min(...positions.map(p=>p[1]));
+ const ds=canvas.ds;
+ ds.scale=0.6;
+ if(ds.offset?.length>=2){
+  ds.offset[0]=60/0.6-x;
+  ds.offset[1]=65/0.6-y;
+ }
+ canvas.setDirty?.(true,true);
+}
+function scheduleMissingRefresh(){
+ if(missingRefreshQueued)return;
+ missingRefreshQueued=true;
+ frame.contentWindow?.requestAnimationFrame(markMissingNodes);
+}
+function enableMissingNodeAppearance(){
+ const doc=frame.contentDocument;
+ if(!doc)return;
+ const style=doc.createElement('style');
+ style.id='dolorain-missing-node-style';
+ style.textContent='.lg-node[data-dolorain-missing="true"]{outline:2px solid #dc2626!important;outline-offset:-2px;background-color:rgba(127,29,29,.16)!important;}'
+  +'.lg-node[data-dolorain-missing="true"] [data-testid="node-header"],.lg-node[data-dolorain-missing="true"] .lg-node-header{background-color:#991b1b!important;color:#fff!important;}';
+ doc.head.append(style);
+ missingNodeObserver?.disconnect();
+ missingNodeObserver=new frame.contentWindow.MutationObserver(scheduleMissingRefresh);
+ missingNodeObserver.observe(doc.body,{subtree:true,childList:true,attributes:true,
+  attributeFilter:['data-node-id']});
+ scheduleMissingRefresh();
+}
+async function openDroppedWorkflows(files){
+ if(jsonDropBusy)return;
+ if(!nativeApp?.handleFile){
+  $('status').textContent='Editor is still loading · try the JSON drop again';
+  return;
+ }
+ jsonDropBusy=true;
+ try{
+  for(const file of files){
+   $('status').textContent='Opening '+file.name+' in Studio…';
+   // Genuine native ComfyUI import creates a new tab and restores its graph.
+   const result=await nativeApp.handleFile(file,'file_drop');
+   if(result===false)throw Error('ComfyUI rejected '+file.name);
+   scheduleMissingRefresh();
+  }
+  $('status').textContent='Workflow opened in Studio';
+ }catch(error){
+  log('Workflow drop: '+error.message);
+  $('status').textContent='Unable to open JSON · see Logs';
+ }finally{jsonDropBusy=false;}
+}
+function attachJsonDrop(target){
+ target.addEventListener('dragover',event=>{
+  if(event.dataTransfer?.types?.includes('Files')){
+   event.preventDefault();
+   event.dataTransfer.dropEffect='copy';
+  }
+ },true);
+ target.addEventListener('drop',event=>{
+  const files=Array.from(event.dataTransfer?.files||[]).filter(
+   file=>/\.json$/i.test(file.name));
+  if(!files.length)return; // Leave other files to the native ComfyUI handlers.
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void openDroppedWorkflows(files);
+ },true);
+}
+attachJsonDrop(document);
+
+/* Node Manager: keep ComfyUI's own previews for installed definitions.
+   The optional missing-node browser uses only genuine serialized workflow data. */
+let searchPreviewObserver, searchPreviewQueued=false;
+function getMissingSnapshots(){
+ const graph=nativeApp?.graph;
+ if(!graph)return [];
+ const seen=new Set(), output=[];
+ for(const node of graph._nodes||[]){
+  if(!node.has_errors||!node.last_serialization)continue;
+  const info=node.last_serialization, type=String(info.type||node.type||'Unknown');
+  if(seen.has(type))continue;
+  seen.add(type);output.push({type,info});
+ }
+ return output.sort((a,b)=>a.type.localeCompare(b.type));
+}
+function addSearchPreview(){
+ searchPreviewQueued=false;
+ const doc=frame.contentDocument;
+ const results=doc?.querySelector('[role="search"] #results-list');
+ if(!results||results.querySelector('#dolorain-missing-list'))return;
+ const missing=getMissingSnapshots();
+ if(!missing.length)return;
+ const root=results.closest('[role="search"]');
+ if(!root)return;
+ const section=doc.createElement('section');
+ section.id='dolorain-missing-list';
+ section.className='dolorain-missing-list';
+ const heading=doc.createElement('div');
+ heading.textContent='Missing nodes · current workflow';
+ heading.className='dolorain-missing-heading';
+ section.append(heading);
+ const card=doc.createElement('aside');
+ card.className='dolorain-missing-preview';
+ card.hidden=true;
+ card.setAttribute('aria-live','polite');
+ const content=doc.createElement('div');
+ card.append(content);
+ root.append(card);
+ function render(snapshot){
+  card.hidden=false;content.replaceChildren();
+  const title=doc.createElement('div');title.className='dolorain-preview-title';
+  title.textContent=snapshot.info.title||snapshot.type;content.append(title);
+  const marker=doc.createElement('div');marker.className='dolorain-preview-status';
+  marker.textContent='Missing node · original JSON snapshot';content.append(marker);
+  const mini=doc.createElement('div');mini.className='dolorain-preview-node';
+  const top=doc.createElement('div');top.className='dolorain-preview-node-title';
+  top.textContent=snapshot.info.title||snapshot.type;mini.append(top);
+  const ins=Array.isArray(snapshot.info.inputs)?snapshot.info.inputs:[];
+  const outs=Array.isArray(snapshot.info.outputs)?snapshot.info.outputs:[];
+  const count=Math.max(ins.length,outs.length,1);
+  for(let i=0;i<Math.min(count,24);i++){
+   const line=doc.createElement('div');line.className='dolorain-preview-port-row';
+   const input=doc.createElement('span');input.textContent=ins[i]?.name||'';
+   const output=doc.createElement('span');output.textContent=outs[i]?.name||'';
+   line.append(input,output);mini.append(line);
+  }
+  const vals=Array.isArray(snapshot.info.widgets_values)?snapshot.info.widgets_values:[];
+  if(vals.length){
+   const widgets=doc.createElement('div');widgets.className='dolorain-preview-widget-summary';
+   widgets.textContent=vals.length+' saved widget value(s) · controls unavailable until installed';
+   mini.append(widgets);
+  }
+  content.append(mini);
+  const metadata=doc.createElement('div');metadata.className='dolorain-preview-meta';
+  const size=Array.isArray(snapshot.info.size)?snapshot.info.size:[];
+  metadata.textContent='Type: '+snapshot.type+(size.length===2?' · '+Math.round(size[0])+' × '+Math.round(size[1]):'');
+  content.append(metadata);
+  const notice=doc.createElement('p');
+  notice.textContent='Preview reconstructed from the saved workflow. Exact developer widgets and media players require the original package.';
+  content.append(notice);
+ }
+ for(const snapshot of missing){
+  const button=doc.createElement('button');
+  button.type='button';button.className='dolorain-missing-option';
+  button.textContent=snapshot.info.title||snapshot.type;
+  button.title='Preview missing node: '+snapshot.type;
+  button.addEventListener('pointerenter',()=>render(snapshot));
+  button.addEventListener('focus',()=>render(snapshot));
+  button.addEventListener('click',()=>render(snapshot));
+  section.append(button);
+ }
+ results.append(section);
+ // Switching to an installed result restores the native ComfyUI preview card.
+ results.addEventListener('pointerover',event=>{
+  if(event.target.closest('[data-testid="result-item"]'))card.hidden=true;
+ });
+}
+function scheduleSearchPreview(){
+ if(searchPreviewQueued)return;
+ searchPreviewQueued=true;
+ frame.contentWindow?.requestAnimationFrame(addSearchPreview);
+}
+function enableSearchPreview(){
+ const doc=frame.contentDocument;
+ if(!doc)return;
+ const style=doc.createElement('style');
+ style.id='dolorain-search-preview-style';
+ style.textContent=[
+  '.dolorain-missing-list{margin:14px 8px 8px;padding:10px;border-top:1px solid var(--border,#666);display:flex;flex-direction:column;gap:5px}',
+  '.dolorain-missing-heading{font-size:12px;font-weight:700;color:#e57373;padding:4px}',
+  '.dolorain-missing-option{background:rgba(127,29,29,.16);color:inherit;border:1px solid #9f3232;text-align:left;padding:10px;border-radius:8px;cursor:default}',
+  '.dolorain-missing-option:hover,.dolorain-missing-option:focus-visible{outline:2px solid #ef4444}',
+  '.dolorain-missing-preview{position:absolute;top:0;left:calc(100% + 14px);z-index:80;width:330px;max-height:75vh;overflow:auto;background:var(--background,#202124);color:var(--foreground,#eee);border:1px solid #a33;border-radius:12px;padding:14px;box-shadow:0 12px 30px #0005}',
+  '.dolorain-missing-preview[hidden]{display:none!important}',
+  '.dolorain-preview-title{font-weight:700;margin-bottom:5px}',
+  '.dolorain-preview-status{font-size:12px;color:#ef8888;margin-bottom:10px}',
+  '.dolorain-preview-node{border:1px solid #c44;border-radius:8px;overflow:hidden;background:rgba(120,20,20,.12)}',
+  '.dolorain-preview-node-title{background:#991b1b;color:white;padding:9px;font-weight:bold}',
+  '.dolorain-preview-port-row{display:flex;justify-content:space-between;gap:10px;padding:5px 10px;font-size:12px}',
+  '.dolorain-preview-widget-summary{border-top:1px solid #a33;padding:8px;font-size:11px}',
+  '.dolorain-preview-meta{font-size:11px;margin-top:10px;overflow-wrap:anywhere}',
+  '.dolorain-missing-preview p{font-size:11px;line-height:1.4;opacity:.8}',
+  '@media(max-width:1320px){.dolorain-missing-preview{left:auto;right:0;top:65px;max-width:85vw}}'
+ ].join('');
+ doc.head.append(style);
+ searchPreviewObserver?.disconnect();
+ searchPreviewObserver=new frame.contentWindow.MutationObserver(scheduleSearchPreview);
+ searchPreviewObserver.observe(doc.body,{subtree:true,childList:true});
+ scheduleSearchPreview();
+}
 async function connect(){
  while(true){try{const r=await fetch('/_studio/ready',{cache:'no-store'});if(r.ok){const data=await r.json();$('lab').hidden=!data.single_login;if(data.ready)break}}catch{}
  $('status').textContent='Engine starting or unavailable · see Logs';await delay(2500)}
@@ -30,23 +422,26 @@ async function connect(){
    const started=Date.now();
    while(!nativeApp.graph && Date.now()-started<30000)await delay(200);
    if(!nativeApp.graph)throw Error('Native graph did not initialize');
+   attachJsonDrop(win.document);enableMissingNodeAppearance();enableSearchPreview();
+   $('generate').disabled=false;
    $('example').disabled=$('theme').disabled=false;$('status').textContent='Native editor ready';
    for(const name of ['execution_start','executing','execution_cached','execution_error','execution_interrupted','execution_success','reconnecting','reconnected']){
     nativeApi.addEventListener(name,e=>{const d=e.detail||{},node=d.node_id??d.node??(typeof d==='string'?d:'');
      const detail=[node?'node '+node:'',d.node_type,d.exception_type].filter(Boolean).join(' · ');
-     log(name+' '+detail);if(name==='execution_error')$('status').textContent='Execution failed · see Logs'});
+     trackGeneration(name);log(name+' '+detail);if(name==='execution_error')$('status').textContent='Execution failed · see Logs'});
    }
   }catch(e){log(e.message);$('status').textContent='Editor integration error · see Logs'}
  };
  frame.src='/?studio_canvas=1';
 }
-$('example').onclick=async()=>{try{if(!confirm('Open the H3 example? Save any current changes first.'))return;
- const r=await fetch('/_studio/workflow');if(!r.ok)throw Error('H3 workflow unavailable');await nativeApp.loadGraphData(await r.json());
+$('example').onclick=async()=>{try{
+ const r=await fetch('/_studio/workflow');if(!r.ok)throw Error('H3 workflow unavailable');
+ await nativeApp.loadGraphData(await r.json(),true,true,'H3 Example');scheduleMissingRefresh();
 }catch(e){log(e.message);$('status').textContent=e.message}};
 $('theme').onclick=async()=>{try{const settings=nativeApp.ui.settings;
  const next=['light','dolorain-light'].includes(settings.getSettingValue('Comfy.ColorPalette'))?'dark':'light';
  const palettes=settings.getSettingValue('Comfy.CustomColorPalettes')||{};
- await settings.setSettingValue('Comfy.ColorPalette',palettes['dolorain-'+next]?'dolorain-'+next:next);document.documentElement.style.colorScheme=next;
+ await settings.setSettingValue('Comfy.ColorPalette',palettes['dolorain-'+next]?'dolorain-'+next:next);document.documentElement.style.colorScheme=next;document.body.classList.toggle('dark',next==='dark');
 }catch(e){log(e.message)}};
 let reportId=0;
 async function refresh(){

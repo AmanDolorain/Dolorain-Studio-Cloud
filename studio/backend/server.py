@@ -196,6 +196,27 @@ class Handler(BaseHTTPRequestHandler):
             if url.path.startswith('/api/install-status/'):
                 job = node_manager.install_status(url.path.rsplit('/',1)[-1])
                 return self.send(200 if job else 404, job or {'error':'Install job unavailable. Check the engine log.'})
+            if url.path == '/api/logs/comfy':
+                # Original ComfyUI internal console endpoint. It is version-dependent:
+                # tell the UI when absent instead of manufacturing log lines.
+                try:
+                    raw, _ = request_comfy(self.server.comfy, '/internal/logs/raw')
+                    parsed = json.loads(raw)
+                    return self.send(200, {'available': True, 'source': 'ComfyUI /internal/logs/raw', 'data': parsed})
+                except (HTTPError, URLError, TimeoutError, ValueError) as exc:
+                    return self.send(200, {'available': False,
+                                           'source': 'ComfyUI /internal/logs/raw',
+                                           'reason': type(exc).__name__ + ': ' + str(exc)[:180]})
+            if url.path == '/api/logs/container':
+                # A local bridge is not the RunPod container runtime. Do not
+                # mislabel ComfyUI output or fabricate Docker startup logs.
+                return self.send(200, {'available': False,
+                    'source': 'RunPod container stdout/stderr',
+                    'reason': 'Container logs belong to the host/RunPod; open the Pod Container Logs panel.'})
+            if url.path == '/api/logs/system':
+                return self.send(200, {'available': False,
+                    'source': 'RunPod system events',
+                    'reason': 'Pod image-pull/start/stop system logs require RunPod platform access; open Pod System Logs.'})
             if url.path == '/api/status':
                 try:
                     data, _ = request_comfy(self.server.comfy, '/system_stats')

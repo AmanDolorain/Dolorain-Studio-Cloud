@@ -7,14 +7,14 @@ from tempfile import NamedTemporaryFile
 def palette(light):
     mode = 'light' if light else 'dark'
     bg, card, header, text, border, accent = (
-        ('#f5f6f7','#ffffff','#e9ecef','#24272b','#c7cdd3','#536d82') if light else
-        ('#111315','#1b1e21','#262a2e','#e9eaec','#43484e','#a7b9c7'))
+        ('#f5f6f7','#ffffff','#e9ecef','#24272b','#c7cdd3','#18a957') if light else
+        ('#111315','#1b1e21','#262a2e','#e9eaec','#43484e','#18a957'))
     return {'id':'dolorain-' + mode, 'name':'Dolorain Studio ' + mode.title(), 'light_theme':light,
             'colors':{'node_slot':{}, 'comfy_base':{'fg-color':text,'bg-color':bg,'comfy-menu-bg':card},
                       'litegraph_base':{'CLEAR_BACKGROUND_COLOR':bg,'NODE_TITLE_COLOR':text,
                                         'NODE_DEFAULT_COLOR':header,'NODE_DEFAULT_BGCOLOR':card,
                                         'NODE_TEXT_COLOR':text,'WIDGET_BGCOLOR':header,
-                                        'WIDGET_TEXT_COLOR':text,'WIDGET_OUTLINE_COLOR':border},
+                                        'WIDGET_TEXT_COLOR':text,'WIDGET_OUTLINE_COLOR':border,'NODE_SELECTED_TITLE_COLOR':accent,'HIGHLIGHTED_LINK_COLOR':accent},
                       'theme':{'background':bg,'foreground':text,'card':card,'node':card,
                                'node-foreground':text,'node-header':header,'node-border':border,
                                'border':border,'ring':accent}}}
@@ -28,8 +28,12 @@ def install(user_dir):
     palettes = dict(settings.get('Comfy.CustomColorPalettes', {}))
     for light in (False, True):
         entry = palette(light)
-        palettes.setdefault(entry['id'], entry)
+        palettes[entry['id']] = entry  # Refresh existing Dolorain palette with green accent.
     settings['Comfy.CustomColorPalettes'] = palettes
+    # Use ComfyUI's own Node Search and developer-authored live preview cards.
+    settings['Comfy.NodeSearchBoxImpl'] = 'default'
+    settings['Comfy.NodeSearchBoxImpl.NodePreview'] = True
+    settings['Comfy.Minimap.Visible'] = False  # User explicitly excludes the bottom overview map.
     key = 'Comfy.ColorPalette'
     if settings.get(key, 'light') in ('light','dark'):
         settings[key] = 'dolorain-' + settings.get(key, 'light')

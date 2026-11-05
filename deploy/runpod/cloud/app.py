@@ -18,11 +18,13 @@ from aiohttp import ClientSession, ClientTimeout, DummyCookieJar, WSMsgType, web
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2] / 'studio'
 sys.path[:0] = [str(ROOT / 'backend'), str(ROOT.parent / 'pipeline')]
-ENGINE = 'http://127.0.0.1:8188'
+ENGINE = os.getenv('DSC_LOCAL_COMFY_URL', 'http://127.0.0.1:8188').rstrip('/')
+LOCAL_PREVIEW = bool(os.getenv('DSC_LOCAL_PREVIEW'))
 HOP = {'host','connection','upgrade','keep-alive','transfer-encoding','proxy-connection',
        'proxy-authorization','te','trailer','sec-websocket-key',
        'sec-websocket-version','sec-websocket-extensions','sec-websocket-protocol'}
 EVENTS = deque(maxlen=120)
+CONTAINER_OUTPUT = deque(maxlen=350)  # Selected Studio/ComfyUI child stdout, not RunPod host system logs.
 SECRET = re.compile(r'(?i)(?:password|token|authorization|api[_ -]?key|bearer|://[^ /]+@)')
 
 
@@ -56,6 +58,81 @@ async def engine_ready(client):
             return r.status == 200 and 'devices' in await r.json()
     except Exception:
         return False
+
+
+def _ram_snapshot():
+    """Prefer the real Pod/container cgroup quota; identify fallback as host RAM."""
+    try:
+        limit_file = Path('/sys/fs/cgroup/memory.max')
+        current_file = Path('/sys/fs/cgroup/memory.current')
+        if limit_file.exists() and current_file.exists():
+            limit_raw = limit_file.read_text().strip()
+            if limit_raw != 'max':
+                limit = int(limit_raw)
+                used = int(current_file.read_text().strip())
+                if limit > 0 and 0 <= used <= limit:
+                    return {'used_bytes': used, 'total_bytes': limit, 'scope': 'container'}
+    except (OSError, ValueError):
+        pass
+    try:
+        fields = {}
+        for line in Path('/proc/meminfo').read_text().splitlines():
+            key, _, raw = line.partition(':')
+            if key in ('MemTotal', 'MemAvailable'):
+                fields[key] = int(raw.strip().split()[0]) * 1024
+        total = fields.get('MemTotal')
+        free = fields.get('MemAvailable')
+        if total is not None and free is not None:
+            return {'used_bytes': max(0, total - free), 'total_bytes': total, 'scope': 'host'}
+    except (OSError, ValueError, IndexError):
+        pass
+    return {'used_bytes': None, 'total_bytes': None, 'scope': 'unknown'}
+
+async def telemetry(req):
+    """Read actual GPU data; missing NVML/driver returns null, never fake numbers."""
+    gpu = {'name': None, 'vram_used_bytes': None, 'vram_total_bytes': None,
+           'load_percent': None, 'temperature_c': None}
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            'nvidia-smi', '--query-gpu=name,memory.used,memory.total,utilization.gpu,temperature.gpu',
+            '--format=csv,noheader,nounits', stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL)
+        try:
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.communicate()
+            raise
+        if proc.returncode == 0:
+            row = stdout.decode(errors='replace').splitlines()[0].split(',')
+            if len(row) >= 5:
+                def numeric(value):
+                    try:
+                        return float(value.strip())
+                    except ValueError:
+                        return None
+                gpu['name'] = row[0].strip() or None
+                used, total, load, temp = map(numeric, row[1:5])
+                gpu['vram_used_bytes'] = int(used * 1024 * 1024) if used is not None else None
+                gpu['vram_total_bytes'] = int(total * 1024 * 1024) if total is not None else None
+                gpu['load_percent'] = load
+                gpu['temperature_c'] = temp
+    except (OSError, IndexError, asyncio.TimeoutError):
+        pass
+    if gpu['name'] is None:
+        try:
+            async with req.app['client'].get(ENGINE + '/system_stats', timeout=2) as response:
+                if response.status == 200:
+                    device = (await response.json()).get('devices', [{}])[0]
+                    gpu['name'] = device.get('name')
+                    gpu['vram_total_bytes'] = device.get('vram_total')
+                    vram_free = device.get('vram_free')
+                    if gpu['vram_total_bytes'] is not None and vram_free is not None:
+                        gpu['vram_used_bytes'] = max(0, gpu['vram_total_bytes'] - vram_free)
+        except (OSError, ValueError, KeyError, IndexError, asyncio.TimeoutError):
+            pass
+    return web.json_response({'gpu': gpu, 'ram': _ram_snapshot()},
+                             headers={'Cache-Control': 'no-store'})
 
 
 async def diagnostics(req):
@@ -122,10 +199,14 @@ async def handle(req):
             raise web.HTTPNotFound(text='Single login is not enabled for this Pod.')
         raise web.HTTPFound(destination + '?' + urlencode({'token':os.environ['JUPYTER_TOKEN']}),
                             headers={'Cache-Control':'no-store', 'Referrer-Policy':'no-referrer'})
+    if path == '/_studio/brand/d-logo.svg':
+        return web.FileResponse(ROOT / 'brand' / 'd-logo.svg', headers={'Cache-Control':'public, max-age=3600'})
     if path == '/_studio/workflow':
         return web.FileResponse(ROOT / 'H3_Workflow_Fast_FaceDetail5.json')
     if path == '/_studio/ready':
         return web.json_response({'ready': await engine_ready(req.app['client']), 'single_login': os.getenv('DSC_JUPYTER_SINGLE_LOGIN') == '1' and bool(os.getenv('RUNPOD_POD_ID'))})
+    if path == '/_studio/telemetry':
+        return await telemetry(req)
     if path == '/_studio/diagnostics':
         return await diagnostics(req)
     legacy = path.startswith('/_studio/dashboard/')
@@ -180,6 +261,8 @@ async def run_child(stage, command, cwd=None):
     def publish(line):
         message = line.decode(errors='replace')
         print(message, flush=True)
+        if not SECRET.search(message):
+            CONTAINER_OUTPUT.append({'stage': stage, 'line': message[:800]})
         if re.search(r'\[OK\]|\[FAILED\]|error|exception|traceback|warning|cannot import|starting server|'
                      r'got prompt|prompt executed|failed to validate|not in list|return type mismatch|'
                      r'required input is missing|out of memory|device: cuda', message, re.I):
@@ -221,9 +304,13 @@ async def engine():
         args = [sys.executable, 'main.py', '--listen', '127.0.0.1', '--port', '8188','--disable-auto-launch']
         for flag, directory in [('models','models'),('input','input'),('output','output'),('user','user')]:
             args.extend(['--' + flag + '-directory', str(workspace / directory)])
-        await run_child('ComfyUI', args, cwd='/opt/dolorain/comfy')
-    except OSError as e:
-        note('Startup', f'FAIL: {e}')
+        note('ComfyUI', 'Launching native backend on 127.0.0.1:8188')
+        status = await run_child('ComfyUI', args, cwd='/opt/dolorain/comfy')
+        note('ComfyUI', f'Backend terminated with exit status {status}')
+    except Exception as e:
+        import traceback
+        note('Startup', f'FAIL: {type(e).__name__}: {e}')
+        print(traceback.format_exc(), flush=True)
 
 
 async def services(app):
@@ -235,13 +322,20 @@ async def services(app):
         dashboard.comfy = ENGINE
         dashboard.engine_lock = threading.RLock()
         dashboard.auth_secret = None
+        dashboard.container_logs = CONTAINER_OUTPUT
+        dashboard.studio_events = EVENTS
         threading.Thread(target=dashboard.serve_forever, daemon=True).start()
-        task = asyncio.create_task(engine())
+        if LOCAL_PREVIEW:
+            note('Local preview', 'Reusing an existing ComfyUI instance; no GPU preflight, installation or generation process started')
+            task = None
+        else:
+            task = asyncio.create_task(engine())
         try:
             yield
         finally:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+            if task is not None:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
             await asyncio.to_thread(dashboard.shutdown)
             dashboard.server_close()
 
@@ -250,4 +344,4 @@ if __name__ == '__main__':
     app = web.Application(middlewares=[access], client_max_size=4*1024*1024)
     app.cleanup_ctx.append(services)
     app.router.add_route('*','/{path:.*}',handle)
-    web.run_app(app, host='0.0.0.0', port=8765, access_log=None)
+    web.run_app(app, host='127.0.0.1' if LOCAL_PREVIEW else '0.0.0.0', port=8765, access_log=None)

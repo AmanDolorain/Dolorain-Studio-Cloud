@@ -16,14 +16,10 @@ RUN git clone --filter=blob:none https://github.com/Comfy-Org/ComfyUI.git /opt/d
 RUN python -m pip install --no-cache-dir -r /opt/dolorain/comfy/requirements.txt && python -c "import torch, pydantic, pydantic_settings; assert torch.version.cuda=='13.2'" && python -m pip check
 WORKDIR /opt/dolorain/src
 COPY . /opt/dolorain/src/
-# Only the three already verified, pinned user-owned node repositories.
-# No unknown H3 Connector, model loader, or extra pip dependencies are silently added.
-RUN git clone https://github.com/AmanDolorain/H3-Video-Controller.git /opt/dolorain/comfy/custom_nodes/H3-Video-Controller && \
-    git -C /opt/dolorain/comfy/custom_nodes/H3-Video-Controller checkout --detach 01e132b11c0df35c3d204fac1d1ea21dd904d314 && \
-    git clone https://github.com/AmanDolorain/H3-Simple-Prompt.git /opt/dolorain/comfy/custom_nodes/H3-Simple-Prompt && \
-    git -C /opt/dolorain/comfy/custom_nodes/H3-Simple-Prompt checkout --detach e2273850988fb3aef8f86a445fa0091794e343cc && \
-    git clone https://github.com/AmanDolorain/H3-Audio-Controller.git /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller && \
-    git -C /opt/dolorain/comfy/custom_nodes/H3-Audio-Controller checkout --detach 0ea2c755feef485c51f4226c5f753686a362e8ee
+# The default image contains only ComfyUI's core runtime and native frontend.
+# The user may install third-party/custom node packages separately on a Pod.
+# Missing graph nodes stay visible as native red "missing node" placeholders;
+# never install unknown packages as a side effect of opening a workflow.
 # Optional SSH uses public keys.
 RUN mkdir -p /run/sshd && printf 'PermitRootLogin prohibit-password\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nAllowTcpForwarding local\nGatewayPorts no\nX11Forwarding no\nPermitTunnel no\n' > /etc/ssh/sshd_config.d/dolorain.conf
 
