@@ -118,3 +118,24 @@ function mountGraphFields(card,n){
  }
  card.append(box);
 }
+
+/* Missing nodes are snapshots, not editable substitutes for an uninstalled pack.
+   Never invent widget names or controls: show only saved workflow data. */
+function mountMissingSnapshot(card,n){
+ const named=n.widgets_values_named&&typeof n.widgets_values_named==='object'?n.widgets_values_named:{};
+ const values=Array.isArray(n.widgets_values)?n.widgets_values:[];
+ const entries=Object.entries(named).length?Object.entries(named):values.map((value,i)=>['Value '+(i+1),value]);
+ if(!entries.length)return;
+ const box=document.createElement('div');box.className='missingSnapshot';
+ box.setAttribute('aria-label','Saved workflow values (read only)');
+ for(const [name,value] of entries){
+  const row=document.createElement('div');row.className='missingSnapshotRow';
+  const label=document.createElement('span');label.className='missingSnapshotName';label.textContent=name.replaceAll('_',' ');
+  const display=document.createElement('span');display.className='missingSnapshotValue';
+  const rendered=value===null?'—':typeof value==='object'?JSON.stringify(value):String(value);
+  display.textContent=rendered.length>140?rendered.slice(0,137)+'…':rendered;
+  display.title=rendered;
+  row.append(label,display);box.append(row);
+ }
+ card.append(box);
+}
