@@ -28,7 +28,7 @@ class DolorainPaletteTests(unittest.TestCase):
             path = root / "default" / "comfy.settings.json"
             path.parent.mkdir(parents=True)
             path.write_text(json.dumps({"Comfy.ColorPalette": "dolorain-dark",
-                "Comfy.CustomColorPalettes": {"dolorain-dark": {"colors": {"theme": {"ring": "#ffffff"}}}}}}))
+                "Comfy.CustomColorPalettes": {"dolorain-dark": {"colors": {"theme": {"ring": "#ffffff"}}}}}))
             install(root)
             settings = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(settings["Comfy.ColorPalette"], "dolorain-dark")

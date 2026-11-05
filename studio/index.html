@@ -1422,11 +1422,26 @@ function compactLayout(){const gap=22;let nextX=24;for(const g of groups){g.widt
 // Initial compact layout, without losing the underlying workflow links.
 compactLayout();editHistory.ready=true;recordEdit();
 const workspaces=[];
-let currentTab=null, untitledSequence=0;
+let currentTab=null, untitledSequence=0, previewSequence=0;
 const localPrefix='dolorain-workflow-file:';
 const offlineFiles=location.protocol==='file:';
 function makeTab(name,path=null){
- return {name,path,entries:[],index:-1,camera:null,saved:null};
+ return {name,path,previewId:++previewSequence,entries:[],index:-1,camera:null,saved:null};
+}
+// Give the native renderer a detached snapshot. HTML card dimensions are not LiteGraph sizes.
+function nativeWorkflowSnapshot(){
+ const data=structuredClone(wf);
+ for(const node of data.nodes){
+  const point=positions[node.id], size=node.properties?.dolorainSize;
+  node.pos=[point.x,point.y];
+  if(size)node.size=[size.w??node.size?.[0]??nodeWidth(node.id),size.h??node.size?.[1]??nodeHeight(node.id)];
+ }
+ if(JSON.stringify(groups)!==currentTab.initialGroups){
+  const layout=currentExport();
+  data.groups=layout.groups;
+  data.extra=layout.extra;
+ }
+ return {name:currentTab.name,tabId:currentTab.previewId,data};
 }
 function rememberTab(){
  if(!currentTab)return;
@@ -1506,7 +1521,7 @@ function createWorkflowTab(data=null,path=null){
    wf={id:crypto.randomUUID(),revision:0,last_node_id:0,last_link_id:0,nodes:[],links:[],groups:[],extra:{}};
    groups=[{name:'Workflow',x:24,y:24,ids:[]}];positions={};zoom=.6;panX=24;panY=24;renderStudio();renderGraph();
   }
-  recordEdit();rememberTab();t.saved=t.entries[t.index];updateTabBar();
+  t.initialGroups=JSON.stringify(groups);recordEdit();rememberTab();t.saved=t.entries[t.index];updateTabBar();
  }catch(err){workspaces.pop();currentTab=null;if(prev)activateTab(prev);throw err}
 }
 function closeTab(t){
@@ -1666,14 +1681,16 @@ function asGraph(json){
  });
  return data;
 }
+function openImportedWorkflow(data,name){
+ createWorkflowTab(asGraph(data));
+ currentTab.name=name.replace(/\.json$/i,'');currentTab.saved=null;updateTabBar();
+}
 async function importWorkflows(files){
  const failures=[];
  for(const f of files){
   try{
    if(!/\.json$/i.test(f.name))throw Error('Choose a .json workflow.');
-   const data=asGraph(JSON.parse((await f.text()).replace(/^\uFEFF/,'')));
-   createWorkflowTab(data);
-   currentTab.name=f.name.replace(/\.json$/i,'');currentTab.saved=null;updateTabBar();
+   openImportedWorkflow(JSON.parse((await f.text()).replace(/^\uFEFF/,'')),f.name);
   }catch(e){failures.push(f.name+' — '+e.message)}
  }
  if(failures.length)info(failures.join('\n'),true);

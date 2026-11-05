@@ -42,6 +42,8 @@ header>button,header>a{font-size:11px;white-space:nowrap;padding:4px 6px;flex:no
 .studioHeader .meterTrack{width:22px;height:3px;opacity:.85}
 .studioHeaderActions{display:flex;align-items:center;gap:10px;margin-left:auto;flex:none}
 .studioHeader .headerIcon{border:0!important;border-radius:5px;background:transparent!important;display:inline-flex;align-items:center;justify-content:center;color:#20252b;padding:3px!important;width:28px;height:30px;font-size:17px}
+.studioHeaderActions>[hidden]{display:none!important}
+.studioHeader #nativePreviewSwitch{width:auto;padding:3px 6px!important;font-size:13px}
 .studioHeader .headerIcon:hover{background:#e3e7ea!important}
 .studioHeader #generate{box-shadow:none;opacity:1}
 .studioHeader #generate:disabled{opacity:.45}
@@ -86,9 +88,10 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
  <div class="meter" id="tempMeter" title="GPU temperature"><div class="meterHead"><span>Temp</span><span id="gpuTemp">—</span></div><div class="meterTrack"><span class="meterFill"></span></div></div>
 </div>
 <span id="status" role="status" title="Backend connection" hidden></span>
-<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="Original ComfyUI renderer (preview)">Original</button>
+<div class="studioHeaderActions"><button id="dashboardSwitch" class="headerIcon" title="Studio Dashboard">◈</button><button id="editorSwitch" class="headerIcon active" title="Workflow Editor">⌘</button><button id="nativePreviewSwitch" class="headerIcon" title="सक्रिय वर्कफ़्लो को असली ComfyUI में खोलें">Original</button>
+ <button id="copyNative" hidden title="Native बदलाव नए Studio टैब में खोलें">Studio में कॉपी</button>
  <div class="generationTools" style="display:none!important" hidden><button id="generate" class="headerIcon" disabled title="Generate video" aria-label="Generate video"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="currentColor"><path d="M4 7h16v13H4zM4 3h4l2 3H6zM11 3h4l2 3h-4zM18 3h2v3h-2z"/><path d="m10 10 6 3-6 3z" fill="#fff"/></svg></button><span id="genElapsed" title="Generation elapsed time">Time —</span></div>
- <button id="logs" class="headerIcon" style="display:none!important" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
+ <button id="logs" class="headerIcon" hidden title="Engine diagnostics" aria-label="Diagnostics"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></svg></button>
  <button id="theme" class="headerIcon" disabled title="Light / Dark" aria-label="Toggle light and dark"><svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M20.1 15.8A8.8 8.8 0 0 1 8.2 3.9 9 9 0 1 0 20.1 15.8Z"/></svg></button>
  <details class="studioTools"><summary title="More Studio tools" aria-label="More Studio tools">⋯</summary><div class="studioToolsMenu"><button id="example" disabled>Open H3 workflow</button><button id="nodeManager">Dolorain Node Manager</button><button id="reloadNodes">Refresh nodes (R)</button><a id="lab" href="/_studio/open-jupyter" target="_blank" rel="noreferrer" hidden>JupyterLab</a></div></details>
 </div>
@@ -99,11 +102,10 @@ body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.ac
 <dialog id="nodePanel"><h2>Dolorain Node Manager</h2><p>Curated H3 node catalog. Refresh checks installed engine nodes without reloading the page or changing your workflow.</p><p id="nodeState" role="status">Not checked yet.</p><div id="nodeCatalog"></div><button id="nodePanelRefresh">Refresh nodes (R)</button> <button id="nodePanelClose">Close</button></dialog>
 <script type="module">
 const $=id=>document.getElementById(id), frame=$('canvas'), events=[];
-let nativeApp, nativeApi;
-const dashboardFrame=$('dashboardCanvas');
+let nativeApp;
 const dolorainCatalog=[
  ['H3 Video Controller',['H3VideoController','H3 Video Controller']],
- ['H3 Simple Prompt',['H3SimplePrompt','H3 Simple Prompt']],
+ ['H3 Simple Prompt',['AmanSimplePrompt','H3SimplePrompt','H3 Simple Prompt']],
  ['H3 Audio Controller',['H3AudioController','H3 Audio Controller']],
  ['H3 Connector',['H3Connector','H3 Connector']],
  ['H3 Reference Video',['H3Ref2V','H3 Ref2V']],
@@ -150,68 +152,114 @@ window.addEventListener('keydown',event=>{
  if(target?.closest?.('input,textarea,select,[contenteditable="true"]'))return;
  event.preventDefault();refreshDolorainNodes();
 });
-// Opt-in native renderer preview. The working Dolorain canvas is never replaced.
+// Load a native workflow tab in the same origin as its registered extensions.
 const nativePreviewFrame=$('nativePreviewCanvas');
-let nativePreviewStarted=false,nativePreviewReady=false;
-async function openNativePreview(){
- const ready=await fetch('/_studio/ready',{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
- if(!ready?.ready){alert('Original ComfyUI renderer needs a connected ComfyUI backend. The Dolorain canvas is unchanged.');return}
- activeView='native';
- dashboardFrame.hidden=true;frame.hidden=true;nativePreviewFrame.hidden=false;
- $('dashboardSwitch').classList.remove('active');$('editorSwitch').classList.remove('active');
- $('nativePreviewSwitch').classList.add('active');$('viewTitle').textContent='Original ComfyUI Renderer';
- if(nativePreviewStarted)return;
- nativePreviewStarted=true;
- nativePreviewFrame.onload=async()=>{
-  try{
-   const win=nativePreviewFrame.contentWindow;
-   const load=win.Function('path','return import(path)');
-   const app=(await load('/scripts/app.js')).app;
-   const started=Date.now();
-   while(!app.graph&&Date.now()-started<30000)await delay(200);
-   if(!app.graph)throw Error('Original ComfyUI graph did not initialize');
-   const response=await fetch('/_studio/workflow',{cache:'no-store'});
-   if(!response.ok)throw Error('Workflow JSON HTTP '+response.status);
-   await app.loadGraphData(await response.json(),true,true,'H3 Original Preview');
-   // LiteGraph renders installed and missing nodes natively; do not rebuild widgets.
-   // This mode is a preview: never queue generation or overwrite saved workflows.
-   const style=win.document.createElement('style');
-   style.textContent='.lg-node[data-dolorain-missing="true"]{outline:2px solid #ef3349!important}';
-   win.document.head.append(style);
-   nativePreviewReady=true;
-   log('Original ComfyUI renderer loaded for comparison');
-  }catch(e){nativePreviewStarted=false;log('Native preview: '+e.message);alert('Original renderer unavailable: '+e.message)}
- };
- nativePreviewFrame.src='/?studio_canvas=1';
+let activeView='editor', previewRequest=0, previousSnapshot=null, previousNativePath=null;
+let refreshNativeMarks;
+nativePreviewFrame.addEventListener('load',()=>{
+ const win=nativePreviewFrame.contentWindow;
+ win.addEventListener('error',event=>{
+  const resource=event.target?.src||event.target?.href;
+  if(resource)log('ब्राउज़र संसाधन लोड नहीं हुआ · '+new URL(resource,win.location.href).pathname);
+  else if(event.message)log('ब्राउज़र · '+event.message);
+ },true);
+});
+
+function previewMessage(title,hint){
+ $('loadingInfo').querySelector('strong').textContent=title;
+ $('startupHint').textContent=hint;
+ $('loadingInfo').hidden=false;
 }
-$('nativePreviewSwitch').onclick=openNativePreview;
-let activeView='editor';
-function switchView(view){
- activeView=view;
- $('dashboardSwitch').classList.toggle('active',view==='dashboard');
- $('editorSwitch').classList.toggle('active',view==='editor');
- $('viewTitle').textContent=view==='dashboard'?'Studio Dashboard':'Workflow Editor';
- dashboardFrame.hidden=view!=='dashboard';
- frame.hidden=view!=='editor';
- nativePreviewFrame.hidden=true;
- $('nativePreviewSwitch').classList.remove('active');
- $('loadingInfo').hidden=true;
- if(view==='dashboard'&&!dashboardFrame.src){
-  dashboardFrame.addEventListener('load',()=>{
-   try{
-    const doc=dashboardFrame.contentDocument;
-    if(!doc.querySelector('#graph')||!doc.querySelector('#nodes'))throw Error('Dolorain graph markup missing');
-  const style=doc.createElement('style');
-    style.textContent='body>header,body>.flowBar,#appFooter{display:none!important}main{padding:12px!important}#studio{display:grid!important}#graph{display:none!important}';
-    doc.head.appendChild(style);
-    doc.querySelector('#studioBtn')?.click();
-   }catch(e){log('Dashboard view: '+e.message)}
-  },{once:true});
-  dashboardFrame.src='/_studio/dashboard/';
+
+// A fresh ComfyUI profile opens Templates after restoring its startup tabs.
+function dismissStartupTemplates(win){
+ const doc=win.document;
+ const observer=new win.MutationObserver(closeStartupPicker);
+ const stop=()=>{
+  observer.disconnect();
+  doc.removeEventListener('pointerdown',stop,true);
+  doc.removeEventListener('keydown',stop,true);
+ };
+ function closeStartupPicker(){
+  const close=doc.querySelector('[data-dialog-key="global-workflow-template-selector"] button:has(.pi-times)');
+  if(close){stop();close.click()}
+ }
+ observer.observe(doc.body,{subtree:true,childList:true});
+ doc.addEventListener('pointerdown',stop,true);
+ doc.addEventListener('keydown',stop,true);
+ win.setTimeout(stop,10000);
+ closeStartupPicker();
+}
+
+async function openNativePreview(){
+ const request=++previewRequest;
+ activeView='native';
+ $('logs').hidden=false;
+ $('copyNative').hidden=true;
+ frame.hidden=true; nativePreviewFrame.hidden=false;
+ $('editorSwitch').classList.remove('active');
+ $('dashboardSwitch').classList.remove('active');
+ $('nativePreviewSwitch').classList.add('active');
+ $('viewTitle').textContent='Original · ComfyUI';
+ previewMessage('ComfyUI खुल रहा है…','नोड और उनकी extensions लोड हो रही हैं।');
+ try{
+  const response=await fetch('/_studio/ready',{cache:'no-store',signal:AbortSignal.timeout(8000)});
+  if(!response.ok||!(await response.json()).ready)throw Error('ComfyUI से कनेक्शन जाँचें। अभी नोड की उपलब्धता अज्ञात है।');
+  if(request!==previewRequest)return;
+  const snapshot=frame.contentWindow.nativeWorkflowSnapshot();
+  const signature=JSON.stringify(snapshot);
+  if(!nativePreviewFrame.hasAttribute('src'))nativePreviewFrame.src='/?studio_canvas=1';
+  const end=Date.now()+60000;
+  // iframe.onload only means the document loaded. window.app is published after extension setup.
+  while(true){
+   if(request!==previewRequest)return;
+   const app=nativePreviewFrame.contentWindow.app;
+   if(app?.canvas&&app.extensionManager?.workflow?.tabsRestored!==false){
+    if(nativeApp!==app){
+     previousSnapshot=null;nativeApp=app;
+     dismissStartupTemplates(nativePreviewFrame.contentWindow);
+     refreshNativeMarks=enableMissingNodeAppearance(app,nativePreviewFrame.contentWindow);
+    }
+    break;
+   }
+   if(Date.now()>end)throw Error('Native Canvas तैयार नहीं हुआ। ComfyUI और extensions के लॉग देखें।');
+   await delay(100);
+  }
+  const workflowStore=nativeApp.extensionManager?.workflow;
+  if(signature!==previousSnapshot||workflowStore?.activeWorkflow?.path!==previousNativePath){
+   previousSnapshot=null;
+   const loaded=await nativeApp.loadGraphData(snapshot.data,true,false,snapshot.name,{deferWarnings:true});
+   if(request!==previewRequest)return;
+   if(loaded===false||!nativeApp.graph||nativeApp.graph._nodes.length!==snapshot.data.nodes.length)
+    throw Error('चुना हुआ वर्कफ़्लो पूरा नहीं खुला।');
+   frameWorkflowAtSixtyPercent();
+   previousSnapshot=signature;
+   previousNativePath=workflowStore?.activeWorkflow?.path;
+  }
+  refreshNativeMarks();
+  nativeApp.canvas.setDirty(true,true);
+  $('copyNative').hidden=false;
+  $('viewTitle').textContent='Original · '+snapshot.name;
+  $('loadingInfo').hidden=true;
+  log('असली ComfyUI Canvas · '+snapshot.name+' · '+nativeApp.graph._nodes.length+' नोड');
+ }catch(error){
+  if(request!==previewRequest)return;
+  log('Original · '+error.message);
+  previewMessage('Original नहीं खुला',error.message+' Original दबाकर फिर कोशिश करें।');
+  if(!nativeApp)nativePreviewFrame.removeAttribute('src');
  }
 }
-$('dashboardSwitch').onclick=()=>switchView('dashboard');
-$('editorSwitch').onclick=()=>switchView('editor');
+$('nativePreviewSwitch').onclick=openNativePreview;
+$('copyNative').onclick=async()=>{
+ try{
+  const app=nativeApp, workflow=app.extensionManager?.workflow?.activeWorkflow;
+  const graph=(app.rootGraph||app.graph).serialize();
+  const name=(workflow?.filename||workflow?.path?.split('/').pop()||'Original').replace(/\.json$/i,'')+' (Original).json';
+  const editor=frame.contentWindow;
+  editor.openImportedWorkflow(JSON.parse(JSON.stringify(graph)),name);
+  updateEmbeddedView('editor');
+ }catch(error){log('वर्कफ़्लो कॉपी · '+error.message);alert(error.message)}
+};
 $('startupDiagnostics').onclick=()=>$('logs').click();
 
 function log(message){events.push(new Date().toISOString()+' '+String(message).slice(0,420));if(events.length>80)events.shift()}
@@ -247,308 +295,73 @@ async function refreshTelemetry(){
  }
 }
 setInterval(refreshTelemetry,10000);void refreshTelemetry();
-let generationStartedAt=null,generationRunning=false;
-function elapsedLabel(ms){
- const secs=Math.max(0,Math.floor(ms/1000));
- return [Math.floor(secs/3600),Math.floor(secs%3600/60),secs%60].map(n=>String(n).padStart(2,'0')).join(':');
-}
-function displayElapsed(){
- if(generationRunning&&generationStartedAt!==null)
-  $('genElapsed').textContent='Time '+elapsedLabel(Date.now()-generationStartedAt);
-}
-setInterval(displayElapsed,1000);
-function trackGeneration(name){
- if(name==='execution_start'){
-  generationStartedAt=Date.now();generationRunning=true;displayElapsed();
- }else if(['execution_success','execution_error','execution_interrupted'].includes(name)){
-  displayElapsed();generationRunning=false;
+// A LiteGraph placeholder carries the original serialization. Execution errors alone do not qualify.
+function enableMissingNodeAppearance(app,win){
+ const doc=win.document, canvas=app.canvas;
+ const missing=node=>Boolean(node?.last_serialization);
+ const decorated=new WeakSet();
+ const draw=canvas.drawNode;
+ canvas.drawNode=function(node,...args){
+  if(missing(node)&&node.strokeStyles&&!decorated.has(node)){
+   // Presentation hooks only. Do not set serialized colors, change geometry or replace widgets.
+   Object.defineProperty(node,'renderingColor',{configurable:true,get:()=>'#991b1b'});
+   node.strokeStyles.error=()=>({color:'#ef3349',lineWidth:3,padding:0});
+   decorated.add(node);
+  }
+  return draw.call(this,node,...args);
+ };
+ const style=doc.createElement('style');
+ style.textContent='.lg-node[data-dolorain-missing]{outline:3px solid #ef3349!important}.lg-node[data-dolorain-missing] .lg-node-header{background:#991b1b!important;color:white!important}';
+ doc.head.append(style);
+ function mark(element){
+  element.toggleAttribute('data-dolorain-missing',missing(app.canvas.graph?.getNodeById(Number(element.dataset.nodeId))));
  }
-}
-$('generate').onclick=async()=>{
- if(!nativeApp?.queuePrompt)return;
- $('generate').disabled=true;
- try{
-  // Native ComfyUI queue method preserves the real workflow's validation
-  // and optional custom-node execution behaviour.
-  await nativeApp.queuePrompt(0);
- }catch(error){
-  log('Generate: '+error.message);
-  $('status').textContent='Generate failed · see Logs';
- }finally{$('generate').disabled=false}
-};
-
-// Keep original ComfyUI tabs, file handling, and nodes; protect JSON drops from
-// Edge/browser navigation even when the drop target is inside the iframe.
-let jsonDropBusy=false, missingNodeObserver, missingRefreshQueued=false;
-function markMissingNodes(){
- missingRefreshQueued=false;
- const doc=frame.contentDocument;
- if(!doc||!nativeApp?.graph)return;
- const nodes=nativeApp.graph._nodes||[];
- const missing=new Set(nodes.filter(n=>n.has_errors&&n.last_serialization).map(n=>String(n.id)));
- // Classic LiteGraph nodes are canvas-drawn; DOM CSS cannot color them.
- // Only recolor verifiably missing native placeholder nodes.
- let changed=false;
- for(const node of nodes){
-  if(!missing.has(String(node.id)))continue;
-  if(node.__dolorainMissingMarked)continue;
-  node.__dolorainMissingMarked=true;
-  node.color='#991b1b';
-  node.bgcolor='#451a1a';
-  changed=true;
+ const selector='.lg-node[data-node-id]';
+ function visit(element){
+  if(element.matches?.(selector))mark(element);
+  element.querySelectorAll?.(selector).forEach(mark);
  }
- if(changed)nativeApp.graph.setDirtyCanvas?.(true,true);
- // Keep compatibility with the optional Vue node DOM renderer.
- for(const element of doc.querySelectorAll('.lg-node[data-node-id]')){
-  if(missing.has(element.dataset.nodeId))element.dataset.dolorainMissing='true';
-  else delete element.dataset.dolorainMissing;
- }
+ visit(doc);
+ new win.MutationObserver(records=>{
+  for(const record of records){
+   if(record.type==='attributes')visit(record.target);
+   else record.addedNodes.forEach(visit);
+  }
+ }).observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['data-node-id']});
+ return ()=>visit(doc);
 }
 function frameWorkflowAtSixtyPercent(){
  const graph=nativeApp?.graph, canvas=nativeApp?.canvas;
  const nodes=graph?._nodes||[];
  if(!canvas?.ds||!nodes.length)return;
- const positions=nodes.map(n=>n.pos).filter(p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
+ const positions=nodes.map(n=>n.pos).filter(p=>p&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1]));
  if(!positions.length)return;
  const x=Math.min(...positions.map(p=>p[0])), y=Math.min(...positions.map(p=>p[1]));
  const ds=canvas.ds;
  ds.scale=0.6;
  if(ds.offset?.length>=2){
-  ds.offset[0]=60/0.6-x;
-  ds.offset[1]=65/0.6-y;
+  ds.offset[0]=140/0.6-x;
+  ds.offset[1]=150/0.6-y;
  }
  canvas.setDirty?.(true,true);
 }
-function scheduleMissingRefresh(){
- if(missingRefreshQueued)return;
- missingRefreshQueued=true;
- frame.contentWindow?.requestAnimationFrame(markMissingNodes);
-}
-function enableMissingNodeAppearance(){
- const doc=frame.contentDocument;
- if(!doc)return;
- const style=doc.createElement('style');
- style.id='dolorain-missing-node-style';
- style.textContent='.lg-node[data-dolorain-missing="true"]{outline:2px solid #dc2626!important;outline-offset:-2px;background-color:rgba(127,29,29,.16)!important;}'
-  +'.lg-node[data-dolorain-missing="true"] [data-testid="node-header"],.lg-node[data-dolorain-missing="true"] .lg-node-header{background-color:#991b1b!important;color:#fff!important;}';
- doc.head.append(style);
- missingNodeObserver?.disconnect();
- missingNodeObserver=new frame.contentWindow.MutationObserver(scheduleMissingRefresh);
- missingNodeObserver.observe(doc.body,{subtree:true,childList:true,attributes:true,
-  attributeFilter:['data-node-id']});
- scheduleMissingRefresh();
-}
-async function openDroppedWorkflows(files){
- if(jsonDropBusy)return;
- if(!nativeApp?.handleFile){
-  $('status').textContent='Editor is still loading · try the JSON drop again';
-  return;
- }
- jsonDropBusy=true;
- try{
-  for(const file of files){
-   $('status').textContent='Opening '+file.name+' in Studio…';
-   // Genuine native ComfyUI import creates a new tab and restores its graph.
-   const result=await nativeApp.handleFile(file,'file_drop');
-   if(result===false)throw Error('ComfyUI rejected '+file.name);
-   scheduleMissingRefresh();
-  }
-  $('status').textContent='Workflow opened in Studio';
- }catch(error){
-  log('Workflow drop: '+error.message);
-  $('status').textContent='Unable to open JSON · see Logs';
- }finally{jsonDropBusy=false;}
-}
-function attachJsonDrop(target){
- target.addEventListener('dragover',event=>{
-  if(event.dataTransfer?.types?.includes('Files')){
-   event.preventDefault();
-   event.dataTransfer.dropEffect='copy';
-  }
- },true);
- target.addEventListener('drop',event=>{
-  const files=Array.from(event.dataTransfer?.files||[]).filter(
-   file=>/\.json$/i.test(file.name));
-  if(!files.length)return; // Leave other files to the native ComfyUI handlers.
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  void openDroppedWorkflows(files);
- },true);
-}
-attachJsonDrop(document);
-
-/* Node Manager: keep ComfyUI's own previews for installed definitions.
-   The optional missing-node browser uses only genuine serialized workflow data. */
-let searchPreviewObserver, searchPreviewQueued=false;
-function getMissingSnapshots(){
- const graph=nativeApp?.graph;
- if(!graph)return [];
- const seen=new Set(), output=[];
- for(const node of graph._nodes||[]){
-  if(!node.has_errors||!node.last_serialization)continue;
-  const info=node.last_serialization, type=String(info.type||node.type||'Unknown');
-  if(seen.has(type))continue;
-  seen.add(type);output.push({type,info});
- }
- return output.sort((a,b)=>a.type.localeCompare(b.type));
-}
-function addSearchPreview(){
- searchPreviewQueued=false;
- const doc=frame.contentDocument;
- const results=doc?.querySelector('[role="search"] #results-list');
- if(!results||results.querySelector('#dolorain-missing-list'))return;
- const missing=getMissingSnapshots();
- if(!missing.length)return;
- const root=results.closest('[role="search"]');
- if(!root)return;
- const section=doc.createElement('section');
- section.id='dolorain-missing-list';
- section.className='dolorain-missing-list';
- const heading=doc.createElement('div');
- heading.textContent='Missing nodes · current workflow';
- heading.className='dolorain-missing-heading';
- section.append(heading);
- const card=doc.createElement('aside');
- card.className='dolorain-missing-preview';
- card.hidden=true;
- card.setAttribute('aria-live','polite');
- const content=doc.createElement('div');
- card.append(content);
- root.append(card);
- function render(snapshot){
-  card.hidden=false;content.replaceChildren();
-  const title=doc.createElement('div');title.className='dolorain-preview-title';
-  title.textContent=snapshot.info.title||snapshot.type;content.append(title);
-  const marker=doc.createElement('div');marker.className='dolorain-preview-status';
-  marker.textContent='Missing node · original JSON snapshot';content.append(marker);
-  const mini=doc.createElement('div');mini.className='dolorain-preview-node';
-  const top=doc.createElement('div');top.className='dolorain-preview-node-title';
-  top.textContent=snapshot.info.title||snapshot.type;mini.append(top);
-  const ins=Array.isArray(snapshot.info.inputs)?snapshot.info.inputs:[];
-  const outs=Array.isArray(snapshot.info.outputs)?snapshot.info.outputs:[];
-  const count=Math.max(ins.length,outs.length,1);
-  for(let i=0;i<Math.min(count,24);i++){
-   const line=doc.createElement('div');line.className='dolorain-preview-port-row';
-   const input=doc.createElement('span');input.textContent=ins[i]?.name||'';
-   const output=doc.createElement('span');output.textContent=outs[i]?.name||'';
-   line.append(input,output);mini.append(line);
-  }
-  const vals=Array.isArray(snapshot.info.widgets_values)?snapshot.info.widgets_values:[];
-  if(vals.length){
-   const widgets=doc.createElement('div');widgets.className='dolorain-preview-widget-summary';
-   widgets.textContent=vals.length+' saved widget value(s) · controls unavailable until installed';
-   mini.append(widgets);
-  }
-  content.append(mini);
-  const metadata=doc.createElement('div');metadata.className='dolorain-preview-meta';
-  const size=Array.isArray(snapshot.info.size)?snapshot.info.size:[];
-  metadata.textContent='Type: '+snapshot.type+(size.length===2?' · '+Math.round(size[0])+' × '+Math.round(size[1]):'');
-  content.append(metadata);
-  const notice=doc.createElement('p');
-  notice.textContent='Preview reconstructed from the saved workflow. Exact developer widgets and media players require the original package.';
-  content.append(notice);
- }
- for(const snapshot of missing){
-  const button=doc.createElement('button');
-  button.type='button';button.className='dolorain-missing-option';
-  button.textContent=snapshot.info.title||snapshot.type;
-  button.title='Preview missing node: '+snapshot.type;
-  button.addEventListener('pointerenter',()=>render(snapshot));
-  button.addEventListener('focus',()=>render(snapshot));
-  button.addEventListener('click',()=>render(snapshot));
-  section.append(button);
- }
- results.append(section);
- // Switching to an installed result restores the native ComfyUI preview card.
- results.addEventListener('pointerover',event=>{
-  if(event.target.closest('[data-testid="result-item"]'))card.hidden=true;
- });
-}
-function scheduleSearchPreview(){
- if(searchPreviewQueued)return;
- searchPreviewQueued=true;
- frame.contentWindow?.requestAnimationFrame(addSearchPreview);
-}
-function enableSearchPreview(){
- const doc=frame.contentDocument;
- if(!doc)return;
- const style=doc.createElement('style');
- style.id='dolorain-search-preview-style';
- style.textContent=[
-  '.dolorain-missing-list{margin:14px 8px 8px;padding:10px;border-top:1px solid var(--border,#666);display:flex;flex-direction:column;gap:5px}',
-  '.dolorain-missing-heading{font-size:12px;font-weight:700;color:#e57373;padding:4px}',
-  '.dolorain-missing-option{background:rgba(127,29,29,.16);color:inherit;border:1px solid #9f3232;text-align:left;padding:10px;border-radius:8px;cursor:default}',
-  '.dolorain-missing-option:hover,.dolorain-missing-option:focus-visible{outline:2px solid #ef4444}',
-  '.dolorain-missing-preview{position:absolute;top:0;left:calc(100% + 14px);z-index:80;width:330px;max-height:75vh;overflow:auto;background:var(--background,#202124);color:var(--foreground,#eee);border:1px solid #a33;border-radius:12px;padding:14px;box-shadow:0 12px 30px #0005}',
-  '.dolorain-missing-preview[hidden]{display:none!important}',
-  '.dolorain-preview-title{font-weight:700;margin-bottom:5px}',
-  '.dolorain-preview-status{font-size:12px;color:#ef8888;margin-bottom:10px}',
-  '.dolorain-preview-node{border:1px solid #c44;border-radius:8px;overflow:hidden;background:rgba(120,20,20,.12)}',
-  '.dolorain-preview-node-title{background:#991b1b;color:white;padding:9px;font-weight:bold}',
-  '.dolorain-preview-port-row{display:flex;justify-content:space-between;gap:10px;padding:5px 10px;font-size:12px}',
-  '.dolorain-preview-widget-summary{border-top:1px solid #a33;padding:8px;font-size:11px}',
-  '.dolorain-preview-meta{font-size:11px;margin-top:10px;overflow-wrap:anywhere}',
-  '.dolorain-missing-preview p{font-size:11px;line-height:1.4;opacity:.8}',
-  '@media(max-width:1320px){.dolorain-missing-preview{left:auto;right:0;top:65px;max-width:85vw}}'
- ].join('');
- doc.head.append(style);
- searchPreviewObserver?.disconnect();
- searchPreviewObserver=new frame.contentWindow.MutationObserver(scheduleSearchPreview);
- searchPreviewObserver.observe(doc.body,{subtree:true,childList:true});
- scheduleSearchPreview();
-}
-async function connect(){
- while(true){try{const r=await fetch('/_studio/ready',{cache:'no-store'});if(r.ok){const data=await r.json();$('lab').hidden=!data.single_login;if(data.ready)break}}catch{}
- $('status').textContent='Engine starting or unavailable · see Logs';await delay(2500)}
- frame.onload=async()=>{
-  try{
-   const win=frame.contentWindow;
-   // Import in the child realm so all custom nodes share the same app and event bus.
-   const load=win.Function('path','return import(path)');
-   nativeApp=(await load('/scripts/app.js')).app;
-   nativeApi=(await load('/scripts/api.js')).api;
-   const started=Date.now();
-   while(!nativeApp.graph && Date.now()-started<30000)await delay(200);
-   if(!nativeApp.graph)throw Error('Native graph did not initialize');
-   attachJsonDrop(win.document);enableMissingNodeAppearance();enableSearchPreview();
-   // Keyboard events inside the native iframe do not bubble to the Studio shell.
-   win.document.addEventListener('keydown',event=>{
-    if(event.key.toLowerCase()!=='r'||event.ctrlKey||event.altKey||event.metaKey||event.repeat)return;
-    if(event.target?.closest?.('input,textarea,select,[contenteditable="true"],[role="textbox"]'))return;
-    event.preventDefault();event.stopPropagation();refreshDolorainNodes();
-   },true);
-   $('generate').disabled=false;
-   $('example').disabled=$('theme').disabled=false;$('status').textContent='Native editor ready';
-   for(const name of ['execution_start','executing','execution_cached','execution_error','execution_interrupted','execution_success','reconnecting','reconnected']){
-    nativeApi.addEventListener(name,e=>{const d=e.detail||{},node=d.node_id??d.node??(typeof d==='string'?d:'');
-     const detail=[node?'node '+node:'',d.node_type,d.exception_type].filter(Boolean).join(' · ');
-     trackGeneration(name);log(name+' '+detail);if(name==='execution_error')$('status').textContent='Execution failed · see Logs'});
-   }
-  }catch(e){log(e.message);$('status').textContent='Editor integration error · see Logs'}
- };
- frame.src='/?studio_canvas=1';
-}
-$('example').onclick=async()=>{try{
- const r=await fetch('/_studio/workflow');if(!r.ok)throw Error('H3 workflow unavailable');
- await nativeApp.loadGraphData(await r.json(),true,true,'H3 Example');scheduleMissingRefresh();
-}catch(e){log(e.message);$('status').textContent=e.message}};
-$('theme').onclick=async()=>{try{const settings=nativeApp.ui.settings;
- const next=['light','dolorain-light'].includes(settings.getSettingValue('Comfy.ColorPalette'))?'dark':'light';
- const palettes=settings.getSettingValue('Comfy.CustomColorPalettes')||{};
- await settings.setSettingValue('Comfy.ColorPalette',palettes['dolorain-'+next]?'dolorain-'+next:next);document.documentElement.style.colorScheme=next;document.body.classList.toggle('dark',next==='dark');
-}catch(e){log(e.message)}};
 let reportId=0;
 async function refresh(){
  const id=++reportId;let lines=[],graph;
- try{if(nativeApp?.graph){
-  const doc=nativeApp.graph.serialize(),nodes=doc.nodes.map(n=>({id:n.id,type:n.type}));
+ try{if(nativeApp?.graph||frame.contentWindow.nativeWorkflowSnapshot){
+  const doc=activeView==='native'&&nativeApp?.graph?nativeApp.graph.serialize():frame.contentWindow.nativeWorkflowSnapshot().data,nodes=doc.nodes.map(n=>({id:n.id,type:n.type}));
   const links=doc.links.map(l=>Array.isArray(l)?l.slice(0,6):[l.id,l.origin_id,l.origin_slot,l.target_id,l.target_slot,l.type]);
   graph={nodes,links};
  }}catch(e){lines.push('Studio adapter: could not read active graph: '+e.message)}
  try{const r=await fetch('/_studio/diagnostics',graph?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(graph)}:{cache:'no-store'});
  if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();lines.push(...Object.entries(d.layers).map(([k,v])=>k+': '+v),'','Recent server events',...d.events);
  }catch(e){lines.push('Diagnostics endpoint unavailable: '+e.message)}
- lines.push('','Browser execution events',...events);if(id===reportId)$('report').textContent=lines.join('\n');
+ if(activeView==='native'&&nativeApp){
+  const missing=nativeApp.graph._nodes.filter(node=>node.last_serialization).map(node=>node.type);
+  lines.push('','ब्राउज़र में अनुपलब्ध नोड · '+([...new Set(missing)].join(', ')||'कोई नहीं'),
+   'लोड हुई H3 extensions · '+nativeApp.extensions.map(ext=>ext.name).filter(name=>/H3|AmanSimplePrompt|VideoControl/.test(name)).join(', '));
+ }
+ lines.push('','ब्राउज़र की घटनाएँ',...events);if(id===reportId)$('report').textContent=lines.join('\n');
 }
 $('logs').onclick=()=>{$('panel').showModal();refresh()};$('refresh').onclick=refresh;$('close').onclick=()=>$('panel').close();
 $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('report').textContent);$('copy').textContent='Copied'}
@@ -559,6 +372,13 @@ $('copy').onclick=async()=>{try{await navigator.clipboard.writeText($('report').
 function updateEmbeddedView(view){
  const doc=frame.contentDocument;
  if(!doc)return;
+ ++previewRequest;
+ activeView=view;
+ $('logs').hidden=true;
+ frame.hidden=false;nativePreviewFrame.hidden=true;
+ $('nativePreviewSwitch').classList.remove('active');
+ $('copyNative').hidden=true;
+ $('loadingInfo').hidden=true;
  const studio=view==='dashboard';
  doc.querySelector('#studio')?.classList.toggle('hidden',!studio);
  doc.querySelector('#graph')?.classList.toggle('hidden',studio);
@@ -567,7 +387,7 @@ function updateEmbeddedView(view){
  $('dashboardSwitch').classList.toggle('active',studio);
  $('editorSwitch').classList.toggle('active',!studio);
  $('viewTitle').textContent=studio?'Studio Dashboard':'Workflow Editor';
- if(!studio)frame.contentWindow?.requestAnimationFrame(()=>frame.contentWindow?.initialCamera?.());
+
 }
 function embedCanvas(){
  try{
@@ -596,8 +416,8 @@ function embedCanvas(){
     else log('JSON import failed: workflow importer unavailable');
    },true);
   }
-  updateEmbeddedView('editor');
-  $('loadingInfo').hidden=true;
+  if(activeView!=='native')updateEmbeddedView('editor');
+  if(activeView!=='native')$('loadingInfo').hidden=true;
   $('theme').disabled=false;
   $('example').disabled=false;
   $('status').textContent='';
@@ -636,6 +456,11 @@ document.addEventListener('drop',event=>{
  event.preventDefault();
  event.stopPropagation();
  const files=[...event.dataTransfer.files];
+ if(activeView==='native'&&nativeApp){
+  (async()=>{for(const file of files)await nativeApp.handleFile(file,'file_drop')})()
+   .catch(error=>log('Native JSON आयात · '+error.message));
+  return;
+ }
  const editor=frame.contentWindow;
  if(typeof editor?.importWorkflows==='function'){
   editor.importWorkflows(files);
@@ -662,6 +487,11 @@ $('theme').onclick=()=>{
  const dark=!document.body.classList.contains('dark');
  document.body.classList.toggle('dark',dark);
  frame.contentDocument?.body?.classList.toggle('light',!dark);
+ if(activeView==='native'&&nativeApp){
+  const settings=nativeApp.extensionManager.setting, mode=dark?'dark':'light';
+  const palettes=settings.get('Comfy.CustomColorPalettes')||{};
+  settings.set('Comfy.ColorPalette',palettes['dolorain-'+mode]?'dolorain-'+mode:mode);
+ }
  localStorage.setItem('dolorain-shell-dark',String(dark));
  syncThemeIcon();
 };

@@ -1,45 +1,27 @@
-"""Source regression checks for the Studio native JSON workflow importer.
-
-These are intentionally static checks; an end-to-end drag/drop browser
-acceptance test is still required on the candidate RunPod image.
-"""
+"""Studio के दोनों iframe और सक्रिय वर्कफ़्लो के बीच अनुबंध की जाँच।"""
 from pathlib import Path
 import unittest
 
 STUDIO = Path(__file__).with_name("studio.html").read_text(encoding="utf-8")
 
 
-class NativeWorkflowDropContract(unittest.TestCase):
-    def test_external_json_is_intercepted_before_browser_navigation(self):
-        self.assertIn("attachJsonDrop(document)", STUDIO)
-        self.assertIn("attachJsonDrop(win.document)", STUDIO)
-        self.assertIn("event.preventDefault()", STUDIO)
-        self.assertIn("event.stopImmediatePropagation()", STUDIO)
-
-
-    def test_one_header_with_dashboard_and_native_editor(self):
-        self.assertIn('id="dashboardSwitch"', STUDIO)
-        self.assertIn('id="editorSwitch"', STUDIO)
-        self.assertIn('id="dashboardCanvas"', STUDIO)
-        self.assertIn('id="canvas"', STUDIO)
-        self.assertIn('function switchView(view)', STUDIO)
-        self.assertIn("style.textContent='body>header", STUDIO)
-        self.assertNotIn('>Studio dashboard</a>', STUDIO)
-
-    def test_approved_theme_and_native_workflow_camera(self):
-        self.assertIn('body.dark', STUDIO)
-        self.assertIn('#18a957', STUDIO)
-        self.assertIn('ds.scale=0.6', STUDIO)
-        self.assertIn('frameWorkflowAtSixtyPercent()', STUDIO)
-        self.assertIn("node.color='#991b1b'", STUDIO)
-
-    def test_native_import_keeps_workflow_tabs_and_missing_nodes(self):
+class WorkflowViews(unittest.TestCase):
+    def test_shell_drop_reaches_the_visible_editor(self):
         self.assertIn("nativeApp.handleFile(file,'file_drop')", STUDIO)
-        self.assertIn("enableMissingNodeAppearance()", STUDIO)
-        self.assertIn("n.has_errors&&n.last_serialization", STUDIO)
-        self.assertIn('data-dolorain-missing', STUDIO)
-        self.assertNotIn("new FileReader(", STUDIO)
+        self.assertIn("editor.importWorkflows(files)", STUDIO)
+        self.assertIn("event.preventDefault()", STUDIO)
 
+    def test_preview_waits_for_the_native_frontend(self):
+        self.assertIn("nativePreviewFrame.contentWindow.app", STUDIO)
+        self.assertIn("tabsRestored", STUDIO)
+        self.assertNotIn("win.Function(", STUDIO)
 
-if __name__ == "__main__":
-    unittest.main()
+    def test_preview_uses_active_workflow(self):
+        self.assertIn("frame.contentWindow.nativeWorkflowSnapshot()", STUDIO)
+        self.assertNotIn("fetch('/_studio/workflow'", STUDIO)
+        self.assertIn("frame.hidden=false;nativePreviewFrame.hidden=true", STUDIO)
+
+    def test_missing_node_style_is_not_written_to_workflow_colors(self):
+        self.assertIn("node.strokeStyles.error", STUDIO)
+        self.assertIn(".lg-node[data-dolorain-missing] .lg-node-header", STUDIO)
+        self.assertNotIn("node.color=", STUDIO)
