@@ -1,16 +1,12 @@
-# Dolorain Studio LOCAL preview: reuses the user's already running ComfyUI Easy Install.
+# Dolorain Studio LOCAL preview: reuse an already running ComfyUI backend; never install dependencies.
 # No packages or model files are downloaded, no GPU inference is started, no system configuration changed.
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
-$easy = 'C:\Users\Aman\Downloads\ComfyUI-Easy-Install\ComfyUI-Easy-Install'
+$localComfy = Join-Path $HOME 'ComfyUI'
 $backend = 'http://127.0.0.1:8188'
 $studio = 'http://127.0.0.1:8765'
 Write-Host 'Dolorain Studio - Local native ComfyUI preview' -ForegroundColor Green
-Write-Host 'Uses existing ComfyUI Easy Install; no installation or model downloads.'
-Write-Host ('Easy Install directory: ' + $easy)
-if (-not (Test-Path -LiteralPath $easy -PathType Container)) {
-    Write-Warning 'ComfyUI Easy Install folder is not present at the saved location. Edit the $easy path in this launcher if you moved it.'
-}
+Write-Host 'Uses the running ComfyUI backend; no installation or model downloads.'
 try {
     $status = Invoke-RestMethod -Uri ($backend + '/system_stats') -TimeoutSec 5 -ErrorAction Stop
     if (-not $status.devices) { throw 'ComfyUI responded without devices info.' }
@@ -18,12 +14,14 @@ try {
 } catch {
     Write-Host ''
     Write-Host 'ComfyUI is not responding at http://127.0.0.1:8188.' -ForegroundColor Yellow
-    Write-Host 'FIRST open ComfyUI Easy Install normally, keep it running, then launch this file again.'
-    Write-Host 'If Easy Install uses a different port, edit $backend above.'
+    Write-Host 'FIRST start your local ComfyUI on port 8188, then launch this file again.'
+    Write-Host 'If ComfyUI uses a different port, edit $backend above.'
     exit 2
 }
 $candidates = New-Object 'System.Collections.Generic.List[string]'
 if ($env:DSC_PYTHON) { $candidates.Add($env:DSC_PYTHON) }
+$localVenv = Join-Path $localComfy '.venv\Scripts\python.exe'
+if (Test-Path -LiteralPath $localVenv -PathType Leaf) { $candidates.Add($localVenv) }
 $relative = @(
     'python_embeded\python.exe', 'python_embedded\python.exe',
     'ComfyUI_windows_portable\python_embeded\python.exe',
@@ -33,7 +31,7 @@ $relative = @(
     'installer_files\env\python.exe'
 )
 foreach ($rel in $relative) {
-    $candidate = Join-Path $easy $rel
+    $candidate = Join-Path $localComfy $rel
     if (Test-Path -LiteralPath $candidate -PathType Leaf) { $candidates.Add($candidate) }
 }
 foreach ($name in @('python.exe','python','py.exe','py')) {
@@ -49,7 +47,7 @@ foreach ($candidate in $candidates | Select-Object -Unique) {
 }
 if (-not $python) {
     Write-Host 'No installed Python environment with aiohttp was found.' -ForegroundColor Red
-    Write-Host 'ComfyUI Easy Install may use a different Python folder.'
+    Write-Host 'ComfyUI may use a different Python environment.'
     Write-Host 'Set DSC_PYTHON to its python.exe path and run this launcher again.'
     Write-Host 'No package installation was attempted.'
     exit 3
