@@ -566,6 +566,31 @@ function embedCanvas(){
   $('startupDiagnostics').onclick=()=>{$('panel').showModal();refresh()};
  }
 }
+/* Native file drop on the shell must not navigate Edge to a JSON document.
+   Forward File objects to the existing Dolorain workflow importer in the same-origin iframe. */
+function studioFiles(event){
+ return Array.from(event.dataTransfer?.types||[]).includes('Files');
+}
+document.addEventListener('dragover',event=>{
+ if(!studioFiles(event))return;
+ event.preventDefault();
+ event.dataTransfer.dropEffect='copy';
+},true);
+document.addEventListener('drop',event=>{
+ if(!studioFiles(event))return;
+ event.preventDefault();
+ event.stopPropagation();
+ const files=[...event.dataTransfer.files];
+ const editor=frame.contentWindow;
+ if(typeof editor?.importWorkflows==='function'){
+  editor.importWorkflows(files);
+ }else{
+  log('Workflow import unavailable: embedded editor has not initialized');
+  $('loadingInfo').hidden=false;
+  $('loadingInfo').querySelector('strong').textContent='Workflow import unavailable';
+  $('startupHint').textContent='The canvas editor did not finish initializing. Check browser console.';
+ }
+},true);
 frame.onload=embedCanvas;
 $('loadingInfo').hidden=true;
 $('status').hidden=true;
