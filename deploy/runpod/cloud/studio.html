@@ -6,7 +6,7 @@ header{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;padding:.5rem .8
 button,a{font:inherit;color:inherit;cursor:pointer;text-decoration:none;padding:.3rem .6rem;border:1px solid GrayText;border-radius:.35rem;background:Canvas}
 iframe{width:100%;flex:1;border:0}dialog{max-width:min(94vw,850px);width:850px;border-radius:.5rem}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:58vh;overflow:auto;user-select:text}
 
-.studioTools{display:none!important}\n/* One-line inline telemetry inside the existing Studio header, never cards. */
+/* One-line inline telemetry inside the existing Studio header, never cards. */
 header{flex-wrap:nowrap;gap:7px;min-height:45px;padding:5px 10px;overflow:hidden}
 header>strong{margin-right:10px;flex:0 0 auto;white-space:nowrap}
 .studioSubtitle{font-size:11px;font-weight:400;color:GrayText;margin-left:5px}
@@ -197,9 +197,9 @@ async function openNativePreview(){
  $('logs').hidden=false;
  $('copyNative').hidden=true;
  frame.hidden=true; nativePreviewFrame.hidden=false;
- $('editorSwitch').classList.remove('active');
+ $('editorSwitch').classList.add('active');
  $('dashboardSwitch').classList.remove('active');
- $('nativePreviewSwitch').classList.add('active');
+ $('nativePreviewSwitch').classList.remove('active');
  $('viewTitle').textContent='Dolorain · असली नोड';
  previewMessage('ComfyUI खुल रहा है…','नोड और उनकी extensions लोड हो रही हैं।');
  try{
@@ -280,6 +280,25 @@ async function openNativePreview(){
     '.lg-node:not([data-dolorain-missing]){--node-border-color:#269a66}'
    ].join('');
    uiDoc.head.append(sheet);
+  }
+  // Remove the minimap's floating toggle as well as its panel. The setting alone
+  // disables the panel, but some ComfyUI builds keep the toggle in the toolbar.
+  const removeMinimapControls=()=>{
+   const doc=nativePreviewFrame.contentDocument;
+   if(!doc)return;
+   const buttons=doc.querySelectorAll('button,[role="button"]');
+   for(const button of buttons){
+    const label=[button.getAttribute('aria-label'),button.getAttribute('title'),
+      button.getAttribute('data-testid'),button.textContent?.trim()]
+      .filter(Boolean).join(' ').toLowerCase();
+    if(/mini[ -]?map|toggleminimap/.test(label))button.style.setProperty('display','none','important');
+   }
+  };
+  removeMinimapControls();
+  if(!nativePreviewFrame.contentDocument.__dolorainMapObserver){
+   const observer=new nativePreviewFrame.contentWindow.MutationObserver(removeMinimapControls);
+   observer.observe(nativePreviewFrame.contentDocument.body,{childList:true,subtree:true});
+   nativePreviewFrame.contentDocument.__dolorainMapObserver=observer;
   }
   nativeApp.canvas.setDirty(true,true);
   $('copyNative').hidden=true;
