@@ -501,7 +501,7 @@ function movePicked(e,ids,copyOrigin){
  }
  v.addEventListener('pointermove',move);v.addEventListener('pointerup',end);v.addEventListener('pointercancel',end);v.addEventListener('lostpointercapture',end);
 }
-// No resizeStart handler is defined; existing node/group pointer handlers remain active.
+$('viewport').addEventListener('pointerdown',resizeStart,true);
 $('viewport').addEventListener('pointerdown',e=>{
  if(!e.isPrimary||e.button!==0||e.target.closest('.inlineRename,[data-port-kind],.wireHit'))return;
  const el=e.target.closest('.node'),header=e.target.closest('.group');
@@ -529,12 +529,14 @@ document.addEventListener('keydown',e=>{
  if(e.ctrlKey&&!e.altKey&&e.key.toLowerCase()==='a'){
   e.preventDefault();clearChoices();for(const n of wf.nodes)chosenNodes.add(n.id);
   renderGraph();
- }else if(e.key.toLowerCase()==='g'&&!e.altKey&&!e.metaKey&&chosenGroups.size>=2){
+ }else if(e.key.toLowerCase()==='g'&&!e.altKey&&!e.metaKey&&!e.ctrlKey&&chosenGroups.size>=2){
   e.preventDefault();const [first,...rest]=chosenGroups;
   first.ids=[...new Set([...chosenGroups].flatMap(g=>g.ids))];
   first.x=Math.min(...[...chosenGroups].map(g=>g.x));first.y=Math.min(...[...chosenGroups].map(g=>g.y));
   groups=groups.filter(g=>!rest.includes(g));clearChoices();chosenGroups.add(first);
   renderGraph();info('Merged '+(rest.length+1)+' groups into '+first.name);
+ }else if(e.key.toLowerCase()==='g'&&!e.altKey&&!e.metaKey&&!e.ctrlKey){
+  e.preventDefault();$('addGroup').click();
  }else if(e.key==='Escape'){clearChoices();renderGraph()}
 });
 
@@ -925,7 +927,7 @@ function setView(view,refit=true){
  $('graphBtn').classList.toggle('hidden',!studioMode);
  $('appFooter').classList.toggle('studioMode',studioMode);
  document.querySelector('#appFooter .graphTools').classList.toggle('hidden',studioMode);
- if(!studioMode){renderGraph();if(refit)requestAnimationFrame(()=>requestAnimationFrame(()=>{fitAll();drawWires()}))}
+ if(!studioMode){renderGraph();if(refit)requestAnimationFrame(()=>requestAnimationFrame(()=>{initialCamera();drawWires()}))}
  else{requestAnimationFrame(fitStudio)}
 }
 $('studioBtn').onclick=()=>setView('studio');$('graphBtn').onclick=()=>setView('graph',false);$('theme').onclick=()=>{document.body.classList.toggle('light');updateThemeIcon();localStorage.setItem('dolorain-h3-theme',document.body.classList.contains('light')?'light':'dark')};if(localStorage.getItem('dolorain-h3-theme')==='light')document.body.classList.add('light');init();
@@ -1048,7 +1050,7 @@ async function checkGenerationHistory(){if(!activePromptId||historyBusy)return;h
 setInterval(checkGenerationHistory,5000);
 
 $('validate').onclick=async()=>{try{let d=await api('/api/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(currentExport())});info(d.valid?'Validated '+d.node_count+' active nodes. The engine will check execution constraints when queued.':d.errors.join('\n'),!d.valid)}catch(e){info(e.message,true)}};
-$('run').onclick=async()=>{if(!confirm('Queue this workflow on your connected GPU? GPU usage may incur provider charges.'))return;try{info('Checking nodes and sending workflow…');let d=await api('/api/queue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(currentExport())});generationStart=Date.now();activePromptId=d.prompt_id||null;$('genElapsed').textContent='Time 00:00:00';info('Queued on GPU · Prompt ID: '+(d.prompt_id||'unknown')+' · Timer started at queue time.')}catch(e){info('Generation not started: '+e.message,true)}};
+$('run').onclick=async()=>{try{info('Checking nodes and sending workflow…');let d=await api('/api/queue',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(currentExport())});generationStart=Date.now();activePromptId=d.prompt_id||null;$('genElapsed').textContent='Time 00:00:00';info('Queued on GPU · Prompt ID: '+(d.prompt_id||'unknown')+' · Timer started at queue time.')}catch(e){info('Generation not started: '+e.message,true)}};
 $('saveLocal').onclick=()=>{try{localStorage.setItem('dolorain-h3-workflow',JSON.stringify(currentExport()));info('Workflow saved in this browser. Export JSON for a permanent backup.')}catch(e){info(e.message,true)}};
 $('restoreLocal').onclick=()=>{try{let data=localStorage.getItem('dolorain-h3-workflow');if(!data)return info('No saved workflow found.',true);if(confirm('Replace current editor workflow with saved version?'))loadWorkflow(JSON.parse(data))}catch(e){info(e.message,true)}};
 $('import').onclick=()=>$('importFile').click();$('importFile').onchange=async e=>{let file=e.target.files?.[0];if(!file)return;try{let data=JSON.parse(await file.text());if(!data.nodes||!Array.isArray(data.nodes)||!Array.isArray(data.links))throw Error('Expected workflow JSON with nodes and links, not API prompt JSON');if(confirm('Replace current workflow with '+file.name+'?'))loadWorkflow(data)}catch(e){info('Import failed: '+e.message,true)}e.target.value=''};
@@ -1082,7 +1084,7 @@ function fitAll(initial=false){
  const v=$('viewport');if(v.clientWidth<80||v.clientHeight<80)return;
  const r=rects();const coords=r.map(b=>({x:b.x,y:b.y,right:b.x+b.w,bottom:b.y+b.h}));
  for(const p of Object.values(positions))coords.push({x:p.x,y:p.y,right:p.x+nodeWidth(idAt(p)),bottom:p.y+nodeHeight(idAt(p))});
- if(!coords.length){zoom=1;panX=24;panY=24;applyCamera();return}
+ if(!coords.length){zoom=initial===true?.6:1;panX=24;panY=24;applyCamera();return}
  const minX=Math.min(...coords.map(b=>b.x)),minY=Math.min(...coords.map(b=>b.y));
  const maxX=Math.max(...coords.map(b=>b.right)),maxY=Math.max(...coords.map(b=>b.bottom));
  const width=Math.max(1,maxX-minX),height=Math.max(1,maxY-minY);
@@ -1094,7 +1096,7 @@ function fitAll(initial=false){
 $('zoomIn').onclick=()=>setZoom(zoom*1.15);$('zoomOut').onclick=()=>setZoom(zoom/1.15);
 $('viewport').addEventListener('wheel',e=>{e.preventDefault();let r=$('viewport').getBoundingClientRect();setZoom(zoom*Math.exp(-e.deltaY*.0014),e.clientX-r.left,e.clientY-r.top)},{passive:false});
 // Pan on blank canvas; middle mouse button pans even when starting over a group/node.
-$('viewport').addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1)return;if(e.button===0&&e.target.closest('.node,.group,.nodehead,.handle'))return;let v=$('viewport'),sx=e.clientX,sy=e.clientY,px=panX,py=panY,moved=false;v.setPointerCapture(e.pointerId);v.classList.add('panning');const move=ev=>{if(ev.pointerId!==e.pointerId)return;let dx=ev.clientX-sx,dy=ev.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;panX=px+dx;panY=py+dy;applyCamera()};const end=ev=>{if(ev.pointerId!==e.pointerId)return;v.removeEventListener('pointermove',move);v.removeEventListener('pointerup',end);v.removeEventListener('pointercancel',end);v.classList.remove('panning');if(v.hasPointerCapture(e.pointerId))v.releasePointerCapture(e.pointerId);if(moved){v.dataset.justPanned='1';setTimeout(()=>delete v.dataset.justPanned,200)}};v.addEventListener('pointermove',move);v.addEventListener('pointerup',end);v.addEventListener('pointercancel',end)});
+$('viewport').addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1)return;if(e.button===0&&e.target.closest('.node,.nodehead,.handle,.sizeGrip,[data-port-kind],input,textarea,select,button'))return;let v=$('viewport'),sx=e.clientX,sy=e.clientY,px=panX,py=panY,moved=false;v.setPointerCapture(e.pointerId);v.classList.add('panning');const move=ev=>{if(ev.pointerId!==e.pointerId)return;let dx=ev.clientX-sx,dy=ev.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>3)moved=true;panX=px+dx;panY=py+dy;applyCamera()};const end=ev=>{if(ev.pointerId!==e.pointerId)return;v.removeEventListener('pointermove',move);v.removeEventListener('pointerup',end);v.removeEventListener('pointercancel',end);v.classList.remove('panning');if(v.hasPointerCapture(e.pointerId))v.releasePointerCapture(e.pointerId);if(moved){v.dataset.justPanned='1';setTimeout(()=>delete v.dataset.justPanned,200)}};v.addEventListener('pointermove',move);v.addEventListener('pointerup',end);v.addEventListener('pointercancel',end)});
 const picker = $('nodePicker');
 let pickerDrop = null;
 let pickerTypes = {};
