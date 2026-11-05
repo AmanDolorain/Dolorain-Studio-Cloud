@@ -979,6 +979,7 @@ function studioRenderLogs(){
  const list=$('logsEntries');
  list.replaceChildren();
  const items=studioLogs[studioLogTab];
+ if(upstreamLogStatus[studioLogTab]){const status=document.createElement('p');status.className='logSourceStatus';status.textContent='स्रोत उपलब्ध नहीं: '+upstreamLogStatus[studioLogTab];list.append(status)}
  if(!items.length){const empty=document.createElement('p');empty.textContent=upstreamLogStatus[studioLogTab]||'No '+studioLogTab+' messages recorded in this browser session.';list.append(empty);return}
  for(const item of items.slice().reverse()){
   const entry=document.createElement('article');entry.className='logEntry '+(item.level==='error'?'error':'');
@@ -994,12 +995,12 @@ async function studioFetchServiceLogs(){
    const r=await fetch(path,{cache:'no-store'});
    if(!r.ok)throw Error('HTTP '+r.status);
    const d=await r.json();
-   if(!d.available){upstreamLogStatus[category]=d.reason||'Log source not available';continue}
+   if(!d.available){upstreamLogStatus[category]=d.reason||'Log source not available';studioLogs[category]=studioLogs[category].filter(e=>e.origin!=='upstream');continue}
    upstreamLogStatus[category]='';
    const raw=d.data;
    const text=typeof raw==='string'?raw:JSON.stringify(raw,null,2);
+   studioLogs[category]=studioLogs[category].filter(e=>e.origin!=='upstream');
    if(text){
-    studioLogs[category]=studioLogs[category].filter(e=>e.origin!=='upstream');
     for(const line of text.split('\\n').filter(Boolean).slice(-120)){
      const red=/error|exception|traceback|\[failed\]|fatal/i.test(line);
      studioLogs[category].push({time:new Date().toLocaleTimeString(),text:line.slice(0,1600),level:red?'error':'info',origin:'upstream'});
