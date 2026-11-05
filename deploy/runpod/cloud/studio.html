@@ -473,6 +473,12 @@ async function connect(){
    while(!nativeApp.graph && Date.now()-started<30000)await delay(200);
    if(!nativeApp.graph)throw Error('Native graph did not initialize');
    attachJsonDrop(win.document);enableMissingNodeAppearance();enableSearchPreview();
+   // Keyboard events inside the native iframe do not bubble to the Studio shell.
+   win.document.addEventListener('keydown',event=>{
+    if(event.key.toLowerCase()!=='r'||event.ctrlKey||event.altKey||event.metaKey||event.repeat)return;
+    if(event.target?.closest?.('input,textarea,select,[contenteditable="true"],[role="textbox"]'))return;
+    event.preventDefault();event.stopPropagation();refreshDolorainNodes();
+   },true);
    $('generate').disabled=false;
    $('example').disabled=$('theme').disabled=false;$('status').textContent='Native editor ready';
    for(const name of ['execution_start','executing','execution_cached','execution_error','execution_interrupted','execution_success','reconnecting','reconnected']){
