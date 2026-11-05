@@ -265,6 +265,23 @@ async function openNativePreview(){
    ].join('');
    nativeDoc.head.append(theme);
   }
+  // Dolorain shell: hide ComfyUI chrome, never the graph, nodes, widgets or dialogs.
+  // Selectors are scoped to the embedded native document, not the outer Studio header.
+  const nativeShellCss=[
+   '.side-toolbar,.comfyui-sidebar,.sidebar-container,[data-testid="left-sidebar"],',
+   '[data-testid="sidebar"],.comfyui-menu,.workflow-tabs,.workflow-tabs-container,',
+   '[data-testid="workflow-tabs"],.workflow-tab-bar,.topbar,.top-bar,',
+   '.comfyui-topbar,.comfyui-top-bar,.comfyui-bottom-panel{display:none!important}',
+   // Keep canvas widgets and graph overlay controls functional.
+   '.lg-node{--node-border-color:#269a66}',
+   '.lg-node:not([data-dolorain-missing]) .lg-node-header{border-color:#269a66!important}'
+  ].join('');
+  if(nativeDoc&&!nativeDoc.getElementById('dolorain-native-layout')){
+   const sheet=nativeDoc.createElement('style');
+   sheet.id='dolorain-native-layout';
+   sheet.textContent=nativeShellCss;
+   nativeDoc.head.append(sheet);
+  }
   // UI-only shell customization: native graph, node modes and execution stay untouched.
   const uiDoc=nativePreviewFrame.contentDocument;
   if(uiDoc&&!uiDoc.getElementById('dolorain-native-shell')){
@@ -284,6 +301,8 @@ async function openNativePreview(){
   // Remove the minimap's floating toggle as well as its panel. The setting alone
   // disables the panel, but some ComfyUI builds keep the toggle in the toolbar.
   const removeMinimapControls=()=>{
+   // The native toolbar can render icon-only buttons without accessible labels.
+   // Hide only controls with explicit minimap identifiers; leave unknown icons alone.
    const doc=nativePreviewFrame.contentDocument;
    if(!doc)return;
    const buttons=doc.querySelectorAll('button,[role="button"]');
