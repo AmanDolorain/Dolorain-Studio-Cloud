@@ -77,6 +77,16 @@ body.dark .studioHeader .meter,body.dark .studioHeader #status,body.dark .studio
 body.dark #loadingInfo{background:#111315;color:#e9eaec}
 body.dark #studioWorkspace>iframe{background:#111315}
 body.dark .studioHeader .headerIcon:hover,body.dark .studioHeader .headerIcon.active{background:#173726!important;color:#4ade80!important}
+/* Native graph owns its real Run/Queue toolbar; only the theme control belongs to Dolorain. */
+body.dolorain-native-mode .studioHeader{position:absolute;right:12px;top:8px;z-index:30;width:auto;height:48px;min-height:48px;padding:0;border:0;background:transparent!important;pointer-events:none}
+body.dolorain-native-mode .studioHeader .studioBrand,
+body.dolorain-native-mode .studioHeader .gpuMetrics,
+body.dolorain-native-mode .studioHeader #status,
+body.dolorain-native-mode .studioHeaderActions>*:not(#theme){display:none!important}
+body.dolorain-native-mode .studioHeaderActions{pointer-events:auto}
+body.dolorain-native-mode .studioHeader #theme{display:inline-flex!important;background:#f7f8fa!important;border-radius:10px;width:42px;height:42px;box-shadow:0 1px 5px #0002}
+body.dolorain-native-mode.dark .studioHeader #theme{background:#24272c!important}
+body.dolorain-native-mode #studioWorkspace{height:100dvh;flex:1}
 </style>
 <header class="studioHeader">
 <div class="studioBrand"><img src="/_studio/brand/d-logo.svg" alt="D" width="38" height="38"><strong>Dolorain Studio</strong><span class="studioSubtitle" id="viewTitle">Workflow Editor</span></div>
@@ -191,9 +201,63 @@ function dismissStartupTemplates(win){
  closeStartupPicker();
 }
 
+
+// Relocate the *actual* ComfyUI Vue queue toolbar inside its own document.
+// Moving the existing element preserves Vue handlers, state, menus and live counts.
+// No cloned buttons, no HTML imitation, and no changes to node execution.
+function installNativeQueueHeader(win){
+ const doc=win.document;
+ if(doc.__dolorainQueueHeaderInstalled)return;
+ doc.__dolorainQueueHeaderInstalled=true;
+ const style=doc.createElement('style');
+ style.id='dolorain-queue-header-css';
+ style.textContent=`
+  #dolorain-native-queue-slot{position:fixed;top:8px;right:72px;z-index:10020;
+    display:flex;align-items:center;justify-content:flex-end;max-width:calc(100vw - 95px);
+    pointer-events:none}
+  #dolorain-native-queue-slot>*{pointer-events:auto;position:relative!important;
+    inset:auto!important;transform:none!important;margin:0!important;max-width:100%}
+  #dolorain-native-queue-slot button{pointer-events:auto}
+ `;
+ doc.head.append(style);
+ const slot=doc.createElement('div');
+ slot.id='dolorain-native-queue-slot';
+ doc.body.append(slot);
+ let moving=false;
+ const relocate=()=>{
+  if(moving)return;
+  moving=true;
+  try{
+   // Match the whole native Run/Queue panel using its two live text labels.
+   // Avoid selecting an individual button or an Issues dialog.
+   if(slot.firstElementChild?.isConnected)return;
+   const candidates=[...doc.querySelectorAll('button,[role="button"]')]
+    .filter(el=>!slot.contains(el)&&/\bRun\b/i.test(el.textContent||''));
+   for(const run of candidates){
+    let parent=run.parentElement;
+    for(let depth=0;parent&&depth<5;depth++,parent=parent.parentElement){
+     if(parent===doc.body||parent===doc.documentElement)break;
+     const content=(parent.textContent||'').replace(/\s+/g,' ').trim();
+     if(!/\bactive\b/i.test(content)||content.length>250)continue;
+     const controls=parent.querySelectorAll('button,[role="button"]');
+     if(controls.length<3||controls.length>15)continue;
+     // Prefer the smallest complete queue toolbar, including Overview.
+     slot.appendChild(parent);
+     return;
+    }
+   }
+  }finally{moving=false}
+ };
+ relocate();
+ const observer=new win.MutationObserver(()=>{if(!moving)relocate()});
+ observer.observe(doc.body,{childList:true,subtree:true});
+ win.addEventListener('pagehide',()=>observer.disconnect(),{once:true});
+}
+
 async function openNativePreview(){
  const request=++previewRequest;
  activeView='native';
+ document.body.classList.add('dolorain-native-mode');
  $('logs').hidden=false;
  $('copyNative').hidden=true;
  frame.hidden=true; nativePreviewFrame.hidden=false;
@@ -282,6 +346,7 @@ async function openNativePreview(){
    sheet.textContent=nativeShellCss;
    nativeDoc.head.append(sheet);
   }
+  installNativeQueueHeader(nativePreviewFrame.contentWindow);
   // UI-only shell customization: native graph, node modes and execution stay untouched.
   const uiDoc=nativePreviewFrame.contentDocument;
   if(uiDoc&&!uiDoc.getElementById('dolorain-native-shell')){
@@ -456,6 +521,7 @@ function updateEmbeddedView(view){
  if(!doc)return;
  ++previewRequest;
  activeView=view;
+ document.body.classList.remove('dolorain-native-mode');
  $('logs').hidden=true;
  frame.hidden=false;nativePreviewFrame.hidden=true;
  $('nativePreviewSwitch').classList.remove('active');
