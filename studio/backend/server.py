@@ -179,7 +179,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if url.path == '/brand/d-logo.svg':
                 return self.send(200,(ROOT/'brand'/'d-logo.svg').read_bytes(),'image/svg+xml; charset=utf-8')
-            if url.path in ('/manager_catalog.js', '/node_fields.js', '/canvas_size.js'):
+            if url.path in ('/manager_catalog.js', '/node_fields.js', '/canvas_size.js', '/h3_catalog.js', '/dolorain_packs.js'):
                 return self.send(200,(ROOT/url.path[1:]).read_bytes(),'application/javascript; charset=utf-8')
             if url.path == '/api/box/status':
                 if box_engine is None:
