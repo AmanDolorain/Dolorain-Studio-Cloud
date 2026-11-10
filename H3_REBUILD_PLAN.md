@@ -1,19 +1,19 @@
 # Dolorain Studio — MiniMax H3 / Original ComfyUI
 
-## लक्ष्य
-Vast.ai के तैयार CUDA/PyTorch वातावरण पर Original ComfyUI चलाना; Custom Studio UI या निजी Docker Image आवश्यक नहीं।
+## Objective
+Run the original ComfyUI on Vast.ai using a compatible prebuilt CUDA/PyTorch environment. A custom Studio UI and a separately maintained Docker image are not required.
 
-## आवश्यक फ़ाइलें
+## Required Project Files
 - `workflows/01_Character_Sheet_Designer.json`
 - `workflows/02_H3_Video_Generation.json`
-- ComfyUI Custom Nodes की reproducible install सूची
-- Vast.ai के लिए setup, update, verify और startup scripts
-- Models को Vast.ai पर डाउनलोड करने की अलग प्रक्रिया; weights GitHub में नहीं रखेंगे
+- A reproducible installation manifest for required ComfyUI custom nodes
+- Vast.ai setup, update, verification, and startup scripts
+- A separate process for downloading model weights directly to Vast.ai; model weights will not be committed to GitHub
 
-## बदलाव और परीक्षण
-1. `h3-comfyui-rebuild` Branch पर पुरानी Cloud सामग्री का replacement तैयार करना।
-2. Vast.ai पर GPU सहित ComfyUI, nodes, workflow loading और H3 generation की जाँच।
-3. उपयोगकर्ता की मंजूरी के बाद ही `main` Branch को बदलना।
+## Development and Validation
+1. Prepare the replacement project files on the `h3-comfyui-rebuild` branch.
+2. Test ComfyUI startup, custom nodes, workflow loading, and H3 video generation on a Vast.ai GPU instance.
+3. Replace the `main` branch contents only after user approval.
 
-## स्थिति
-यह केवल तैयारी का दस्तावेज़ है। अभी पुरानी main Branch नहीं बदली गई है। मौजूदा Dockerfile को सीधे Vast.ai setup script समझकर न चलाएँ।
+## Current Status
+This document is a preparation plan only. The existing `main` branch has not been modified. Do not assume that the existing Dockerfile can be used as a Vast.ai setup script.
