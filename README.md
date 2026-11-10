@@ -1,69 +1,27 @@
-# Dolorain Studio Cloud
+# Dolorain Studio — MiniMax H3 on Vast.ai
 
-**Dolorain Studio** is the primary workflow editor interface. This repository contains the Studio editor source under [`studio/`](studio/) and the existing Vast.ai / RunPod GPU setup scripts.
+This repository is intended for the **original ComfyUI**, not a custom frontend or a custom Docker image.
 
-## Windows local Native Studio preview (existing ComfyUI Easy Install)
+## Deployment
+Start a Vast.ai instance with a suitable prebuilt PyTorch/CUDA environment and persistent storage if required. Check the base image's Python, CUDA, and PyTorch compatibility before installing dependencies.
 
-**Use `START-DOLORAIN-LOCAL.bat` from the repository root for the NEW native preview.**
-Do not use the older `studio/start-local.bat` from the source ZIP; that launcher targets a different full distribution and could install dependencies.
-
-1. Open your existing ComfyUI Easy Install in the usual way. Keep it running on `http://127.0.0.1:8188`. Opening the local ComfyUI webpage first is a simple check.
-2. Extract the most recent **feature-branch** ZIP. Double-click **`START-DOLORAIN-LOCAL.bat`** in the extracted repository root (alongside this README). This launches the same cloud Studio HTML / shared header / native ComfyUI Canvas via a localhost proxy.
-3. Open `http://127.0.0.1:8765` in Edge if it does not open automatically. Use Dashboard/Editor switch, Theme, Workflow JSON drag/drop and diagnostics.
-4. Close the launcher window or press Ctrl+C to stop the preview. Your original ComfyUI installation is not modified.
-
-Launcher uses the user's current Easy Install directory `C:\Users\Aman\Downloads\ComfyUI-Easy-Install\ComfyUI-Easy-Install`, but actual ComfyUI backend discovery relies on port 8188, not a hardwired Python executable. It tries common Easy Install Python locations and existing system Python interpreters that already provide `aiohttp`. To override Python selection, set `DSC_PYTHON` in Windows to the ComfyUI Python executable. It **will not install Python, aiohttp, ComfyUI, custom nodes, models or CUDA**. If Python with aiohttp is unavailable, the launcher stops and prints the reason.
-
-**Important:** This is a feature-branch source preview, not a pretested Windows installer. Native canvas/UI behavior depends on the installed ComfyUI Easy Install version and its frontend extension hooks. Some preview integrations may require fixes. Your installed custom-node packages determine actual widgets and missing-node behavior. No GPU inference is requested by the launcher. Port 8765 binds localhost ONLY in preview mode; the no-password setting must not be used on a public web server.
-
-## Studio workflow editor
-
-- Studio View and editable Node Graph View use the same workflow.
-- Includes the H3 example graph, canvas controls, workflow tabs, fullscreen and keyboard shortcuts.
-- Workflow names can be renamed from the open tab or workflow chooser; the chooser includes Open (play) and Delete (trash) controls.
-- See [Studio source and instructions](studio/README.md).
-
-**Important:** The visible ComfyUI canvas is not required. For now, inference still relies on an existing compatible **headless ComfyUI backend**, which supports custom nodes and GPU execution. A fully ComfyUI-free inference engine has **not** been built or verified.
-
-## Reuse existing installations before downloading
-
-Use the already installed compatible ComfyUI backend, Python packages, custom nodes, and model weights where available. The Studio source does not bundle models, a virtual environment, or the third-party ComfyUI distribution.
-
-For a live local API connection, start an existing ComfyUI instance first and launch the bridge with the correct *local loopback* port, for example:
+Clone this repository and run:
 
 ```bash
-python studio/backend/server.py --comfy http://127.0.0.1:8188
+git clone https://github.com/AmanDolorain/Dolorain-Studio-Cloud.git
+cd Dolorain-Studio-Cloud
+bash scripts/setup.sh
+bash scripts/verify.sh
+bash scripts/start.sh
 ```
 
-Run the above from the repository root, with a compatible Python installation. Then open `http://127.0.0.1:8765`. The bridge itself uses Python's standard library. For cloud machines, use SSH port forwarding or another appropriate access-controlled tunnel. Do not expose the loopback-only bridge publicly.
+For subsequent changes, use `git pull --ff-only` followed by `bash scripts/setup.sh`. Restart ComfyUI after changing custom nodes or Python dependencies.
 
-**Avoid accidental installs:** `studio/start-local.bat` is the Windows full-distribution launcher, **not** the reuse-only launcher. Its `install()` routine can create a virtual environment and install requirements when the bundled engine is offline. It requires the separate full Windows distribution with `engine/` and wheels. Do not run it from the source-only checkout expecting a working inference engine. Existing cloud `setup.sh` also performs dependency installation by default; inspect its flags before running.
+## Models
+Download model weights directly on Vast.ai into the appropriate `ComfyUI/models/` subdirectories. Do not commit model weights or credentials.
 
-## Existing Vast.ai / RunPod setup (legacy backend)
-
-- `setup.sh` — shared ComfyUI foundation; reuses an existing Git checkout (but may still install Python requirements).
-- `launch-vast.sh` and `launch-runpod.sh` — provider wrappers.
-- `config/`, `scripts/`, `pipeline/` — prior GPU setup and experiments.
-
-Those existing files are preserved for compatibility and have **not** been switched automatically to the new Studio UI. The new frontend-to-cloud integration still requires target-GPU validation.
+## Workflows
+The two original H3 workflow JSON files must be copied into `workflows/` before this repository is considered deployable. They are **not yet included in this initial source reset**.
 
 ## Status
-
-- Studio editor source committed and backend's five Python unit tests pass in the staging environment.
-- Workflow rename/open/delete and fullscreen UI behavior have browser-based test evidence from the staged editor.
-- Windows target-machine installation, full H3 GPU video generation, and cross-provider launch integration are **not yet verified**.
-- No model weights, passwords, user workflows, generated videos, wheel bundles or large vendor dependencies are committed.
-
-## Independent Box Engine (opt-in extensions)
-
-The Studio adapter alone knows workflow nodes and links. The independent, model-agnostic Box Engine handles opaque payloads with bounded CPU credits. **Fair route scheduling**, **temporary disk spill**, and **PyTorch CUDA tensor transfer with event synchronization** are available as explicit opt-in APIs in `pipeline/`. They are not wired into H3 generation; inference remains unchanged.
-
-No models or third-party packages are downloaded automatically. Actual RTX GPU tests, H3-specific offload/quality comparison, Windows deployment and cloud-launch integration remain outstanding.
-
-See [implementation and remaining validation](docs/box-engine-integration.md).
-
-## RunPod CUDA 13.2 template
-
-Open HTTP 8765 for Dolorain Studio and HTTP 8888 for JupyterLab. Keep the existing template credentials. Studio can open JupyterLab using the optional single-login setting. Studio hosts the native node editor and its developer extensions. **Logs · Diagnostics** provides a copyable execution and layer report. The existing dashboard is accessible from the Studio header.
-
-Build the image from this revision before deploying a fresh Pod. The image build includes a CPU boot check for both browser services. Live hardware and H3 generation require a separate test. See the [RunPod access guide](deploy/runpod/WEB-ACCESS.md).
+This is a source reset and setup scaffold, **not a validated GPU-ready release**. Verify the workflow JSON files, model filenames, node compatibility, and GPU generation before production use.

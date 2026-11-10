@@ -1,0 +1,7 @@
+ComfyUI-Manager https://github.com/Comfy-Org/ComfyUI-Manager.git
+H3-Character-Sheet-Designer https://github.com/ukr8b3g-cmyk/H3-Character-Sheet-Designer.git
+H3-Video-Controller https://github.com/AmanDolorain/H3-Video-Controller.git
+H3-Simple-Prompt https://github.com/AmanDolorain/H3-Simple-Prompt.git
+H3-Audio-Controller https://github.com/AmanDolorain/H3-Audio-Controller.git
+ComfyUI-Pixaroma https://github.com/pixaroma/ComfyUI-Pixaroma.git
+comfyui-speed-minimaxH3 https://github.com/linjian-ufo/comfyui-speed-minimaxH3.git
